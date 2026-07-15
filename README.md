@@ -1,3 +1,3 @@
 # RendrAI
 
-AI-powered frontend application generation platform.git st
+AI-powered frontend application generation platform.
