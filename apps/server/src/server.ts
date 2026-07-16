@@ -1,7 +1,20 @@
 import { app } from './app.js';
+import { connectDatabase } from './config/database.js';
+import { env } from './config/env.js';
 
-const PORT = 3000;
+const startServer = async (): Promise<void> => {
+  try {
+    await connectDatabase();
 
-app.listen(PORT, () => {
-  console.log(`RendrAI server dev running on port ${PORT}`);
-});
+    app.listen(env.PORT, () => {
+      console.log(`RendrAI server running on port ${env.PORT}`);
+    });
+  } catch (error) {
+    console.error('Failed to start server');
+    console.error(error);
+
+    process.exit(1);
+  }
+};
+
+startServer();
