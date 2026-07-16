@@ -10,7 +10,7 @@ const envSchema = z.object({
     .default('development'),
   MONGODB_URI: z.string().min(1),
   CLIENT_ORIGIN: z.string().url(),
-  
+  ENABLE_DNS_WORKAROUND: z.coerce.boolean().default(false),
 });
 
 export const env = envSchema.parse(process.env);
