@@ -1,0 +1,17 @@
+{
+  "name": "rendr-ai",
+  "version": "1.0.0",
+  "private": true,
+  "packageManager": "pnpm@11.3.0",
+  "scripts": {
+    "dev": "concurrently \"pnpm dev:server\" \"pnpm dev:client\"",
+    "dev:server": "pnpm --filter @rendr-ai/server dev",
+    "dev:client": "pnpm --filter client dev",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "pnpm -r lint"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}
