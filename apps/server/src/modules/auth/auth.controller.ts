@@ -26,7 +26,7 @@ export async function login(req:Request,res:Response){
   });
 }
 
-async function refresh(req:Request,res:Response){
+export async function refresh(req:Request,res:Response){
   const refreshToken = req.cookies.refreshToken;
   if(!refreshToken){
     return res.status(401).json({message:"Refresh token missing."});
@@ -45,5 +45,28 @@ async function refresh(req:Request,res:Response){
     user,
     accessToken,
   });
+}
+
+export async function logout(req: Request, res: Response) {
+  const refreshToken = req.cookies.refreshToken;
+
+  if (refreshToken) {
+    await authService.logout(refreshToken);
+  }
+
+  res.clearCookie(
+    "refreshToken",
+    refreshTokenCookieOptions,
+  );
+
+  return res.status(200).json({
+    message: "Logged out successfully.",
+  });
+}
+
+export async function me(req: Request, res: Response) {
+  const user = await authService.me(req.user.id);
+
+  return res.status(200).json(user);
 }
   

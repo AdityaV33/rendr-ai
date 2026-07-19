@@ -1,22 +1,14 @@
 import jwt from "jsonwebtoken";
+import { env } from "../../config/env.js";
 
 interface JwtPayload {
   sub: string;
 }
 
-const accessSecret = process.env.JWT_ACCESS_SECRET!;
-const refreshSecret = process.env.JWT_REFRESH_SECRET!;
-const accessExpiresIn = process.env.ACCESS_TOKEN_EXPIRES_IN!;
-const refreshExpiresIn = process.env.REFRESH_TOKEN_EXPIRES_IN!;
-
-if (
-  !accessSecret ||
-  !refreshSecret ||
-  !accessExpiresIn ||
-  !refreshExpiresIn
-) {
-  throw new Error("Missing JWT environment variables.");
-}
+const accessSecret = env.JWT_ACCESS_SECRET;
+const refreshSecret = env.JWT_REFRESH_SECRET;
+const accessExpiresIn = env.ACCESS_TOKEN_EXPIRES_IN;
+const refreshExpiresIn = env.REFRESH_TOKEN_EXPIRES_IN;
 
 export function generateAccessToken(userId: string): string {
   return jwt.sign(

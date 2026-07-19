@@ -116,8 +116,10 @@ export async function refresh(refreshToken: string) {
   };
 }
 
-export async function logout(userId: string) {
-  const user = await userService.findById(userId);
+export async function logout(refreshToken: string) {
+  const payload = verifyRefreshToken(refreshToken);
+
+  const user = await userService.findById(payload.sub);
 
   if (!user) {
     return;
