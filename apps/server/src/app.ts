@@ -5,6 +5,7 @@ import cors from 'cors';
 import { env } from './config/env.js';
 import cookieParser from "cookie-parser";
 import{errorHandler} from "./modules/middleware/error.middleware.js";
+import projectRouter from "./modules/projects/project.routes.js";
 
 export const app = express();
 app.use(
@@ -19,5 +20,6 @@ app.use(express.json());
 app.use(cookieParser());
 app.use('/api/v1', healthRouter);
 app.use("/api/v1/auth", authRouter);
+app.use("/api/v1/projects", projectRouter);
 app.use(errorHandler);
 
