@@ -1,6 +1,10 @@
 import { ProjectModel } from "./project.model.js";
 import {
   CreateProjectInput, UpdateProjectInput,} from "./project.validation.js";
+import { planProject } from "../ai/index.js";
+import type { ProjectPlan } from "../ai/index.js";
+import { NotFoundError } from "../lib/http-error.js";
+
 
 export async function createProject(
   owner: string,
@@ -55,4 +59,30 @@ export async function deleteProject(
     _id: projectId,
     owner,
   });
+}
+export async function generateProject(
+  owner: string,
+  projectId: string,
+  
+) {
+  const project = await ProjectModel.findOne({
+    owner,
+    _id: projectId,
+  });
+
+  if (!project) {
+    throw new NotFoundError("Project not found");
+  }
+
+  const plan: ProjectPlan = await planProject(
+  project.prompt,
+);
+
+project.framework = plan.framework;
+project.aiPlan = plan;
+project.status = "planning";
+
+await project.save();
+
+return project;
 }

@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import * as projectService from "./project.service.js";
 import { NotFoundError } from "../lib/http-error.js";
+import { generateProject } from "./project.service.js";
 
 export async function createProject(
   req: Request,
@@ -78,4 +79,16 @@ export async function deleteProject(
   }
 
   return res.status(204).send();
+}
+export async function generateProjectController(
+  req: Request,
+  res: Response,
+) {
+  const projectId = req.params.projectId as string;
+
+const project = await generateProject(
+  req.user.id,
+  projectId,
+);
+  return res.status(200).json(project);
 }

@@ -1,4 +1,5 @@
 import { Schema, model, Types } from "mongoose";
+import type { ProjectPlan } from "../ai/index.js";
 
 export type ProjectStatus =
   | "draft"
@@ -19,7 +20,7 @@ export interface Project {
   prompt: string;
   framework: ProjectFramework | null;
   status: ProjectStatus;
-  aiPlan: Record<string, unknown> | null;
+  aiPlan: ProjectPlan | null;
   files: string[];
 }
 

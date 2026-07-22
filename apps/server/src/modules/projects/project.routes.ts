@@ -38,11 +38,17 @@ router.patch(
   validate(updateProjectSchema),
   asyncHandler(projectController.updateProject),
 );
+router.post(
+  "/:projectId/generate",
+  requireAuth,
+  asyncHandler(projectController.generateProjectController),
+);
 
 router.delete(
   "/:projectId",
   requireAuth,
   asyncHandler(projectController.deleteProject),
 );
+
 
 export default router;
