@@ -7,7 +7,9 @@ const getProject = async (projectId: string) => {
 };
 
 const generateProject = async (projectId: string) => {
-  const response = await api.post(`/projects/${projectId}/generate`);
+  const response = await api.post(
+    `/projects/${projectId}/generate`,
+  );
 
   return response.data;
 };

@@ -1,10 +1,13 @@
 import { useEffect } from "react";
 import { useParams } from "react-router-dom";
+import BuilderAssistant from "@/features/builder/components/BuilderAssistant";
 
-import BuilderLayout from "@/features/builder/components/BuilderLayout";
 import AppLayout from "@/components/layout/AppLayout";
-import { useBuilderStore } from "@/features/builder/store/builder.store";
+import BuilderExplorer from "@/features/builder/components/BuilderExplorer";
 import BuilderHeader from "@/features/builder/components/BuilderHeader";
+import BuilderLayout from "@/features/builder/components/BuilderLayout";
+import CodeEditor from "@/features/builder/editor/CodeEditor";
+import { useBuilderStore } from "@/features/builder/store/builder.store";
 
 const BuilderPage = () => {
   const { projectId } = useParams();
@@ -21,7 +24,8 @@ const BuilderPage = () => {
 
     loadProject(projectId);
   }, [projectId, loadProject]);
-    if (loading) {
+
+  if (loading) {
     return (
       <AppLayout>
         <main className="flex min-h-screen items-center justify-center">
@@ -41,45 +45,25 @@ const BuilderPage = () => {
     );
   }
 
- return (
-  <AppLayout>
-    <BuilderLayout
-      left={
-        <div className="p-4">
-          <h2 className="mb-4 text-lg font-semibold">Explorer</h2>
+  return (
+    <AppLayout>
+      <BuilderLayout
+        left={<BuilderExplorer />}
+        center={
+          currentProject && (
+            <div className="flex h-full flex-col">
+              <BuilderHeader project={currentProject} />
 
-          <p className="text-sm text-neutral-400">
-            File Explorer coming in Day 2.
-          </p>
-        </div>
-      }
-      center={
-  currentProject && (
-    <div className="flex h-full flex-col">
-      <BuilderHeader project={currentProject} />
-
-      <div className="flex flex-1 items-center justify-center">
-        <p className="text-neutral-500">
-          Monaco Editor coming in Day 2.
-        </p>
-      </div>
-    </div>
-  )
-}
-      right={
-        <div className="p-4">
-          <h2 className="mb-4 text-lg font-semibold">
-            AI Assistant
-          </h2>
-
-          <p className="text-sm text-neutral-400">
-            Prompt tools coming in Day 2.
-          </p>
-        </div>
-      }
-    />
-  </AppLayout>
-); 
+              <div className="min-h-0 flex-1">
+                <CodeEditor />
+              </div>
+            </div>
+          )
+        }
+      right={<BuilderAssistant />}
+      />
+    </AppLayout>
+  );
 };
 
 export default BuilderPage;

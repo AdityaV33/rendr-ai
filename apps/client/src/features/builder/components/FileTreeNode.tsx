@@ -1,0 +1,47 @@
+import { useBuilderStore } from "@/features/builder/store/builder.store";
+import type { FileNode } from "@/features/builder/types/fileTree";
+
+interface FileTreeNodeProps {
+  node: FileNode;
+}
+
+const FileTreeNode = ({ node }: FileTreeNodeProps) => {
+  const selectedFile = useBuilderStore((state) => state.selectedFile);
+  const selectFile = useBuilderStore((state) => state.selectFile);
+
+  const handleClick = () => {
+    if (node.type === "file") {
+      selectFile(node.path);
+    }
+  };
+
+  const isSelected = selectedFile === node.path;
+
+  return (
+    <div className="ml-2">
+      <div
+        onClick={handleClick}
+        className={`rounded px-2 py-1 text-sm transition-colors ${
+          isSelected
+            ? "bg-neutral-700 text-white"
+            : "text-neutral-200 hover:bg-neutral-800"
+        }`}
+      >
+        {node.type === "folder" ? "📁" : "📄"} {node.name}
+      </div>
+
+      {node.type === "folder" && node.children && (
+        <div className="ml-4 border-l border-neutral-800 pl-2">
+          {node.children.map((child) => (
+            <FileTreeNode
+              key={child.path}
+              node={child}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default FileTreeNode;
