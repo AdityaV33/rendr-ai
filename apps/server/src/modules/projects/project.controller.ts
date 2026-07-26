@@ -1,7 +1,8 @@
 import type { Request, Response } from "express";
-import * as projectService from "./project.service.js";
+
 import { NotFoundError } from "../lib/http-error.js";
-import { generateProject } from "./project.service.js";
+import { toProjectResponse } from "./project.mapper.js";
+import * as projectService from "./project.service.js";
 
 export async function createProject(
   req: Request,
@@ -12,7 +13,9 @@ export async function createProject(
     req.body,
   );
 
-  return res.status(201).json(project);
+  return res.status(201).json(
+    toProjectResponse(project),
+  );
 }
 
 export async function getProjects(
@@ -23,7 +26,9 @@ export async function getProjects(
     req.user.id,
   );
 
-  return res.status(200).json(projects);
+  return res.status(200).json(
+    projects.map(toProjectResponse),
+  );
 }
 
 export async function getProjectById(
@@ -41,7 +46,9 @@ export async function getProjectById(
     throw new NotFoundError("Project not found.");
   }
 
-  return res.status(200).json(project);
+  return res.status(200).json(
+    toProjectResponse(project),
+  );
 }
 
 export async function updateProject(
@@ -60,7 +67,9 @@ export async function updateProject(
     throw new NotFoundError("Project not found.");
   }
 
-  return res.status(200).json(project);
+  return res.status(200).json(
+    toProjectResponse(project),
+  );
 }
 
 export async function deleteProject(
@@ -80,15 +89,20 @@ export async function deleteProject(
 
   return res.status(204).send();
 }
+
 export async function generateProjectController(
   req: Request,
   res: Response,
 ) {
   const projectId = req.params.projectId as string;
 
-const project = await generateProject(
-  req.user.id,
-  projectId,
-);
-  return res.status(200).json(project);
+  const project =
+    await projectService.generateProject(
+      req.user.id,
+      projectId,
+    );
+
+  return res.status(200).json(
+    toProjectResponse(project),
+  );
 }

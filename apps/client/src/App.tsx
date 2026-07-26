@@ -1,34 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
+
+import { useAuthStore } from "@/features/auth/store/auth.store";
+import AppRouter from "@/router/AppRouter";
 
 function App() {
-  const [message, setMessage] = useState("Loading...");
+  const initialize = useAuthStore((state) => state.initialize);
 
   useEffect(() => {
-    const fetchHealth = async () => {
-      try {
-        const response = await fetch("http://localhost:3000/api/v1/health");
+    void initialize();
+  }, [initialize]);
 
-        if (!response.ok) {
-          throw new Error("Failed to fetch");
-        }
-
-        const data = await response.json();
-
-        setMessage(data.message);
-      } catch (error) {
-        console.error(error);
-        setMessage("Failed to connect to server");
-      }
-    };
-
-    fetchHealth();
-  }, []);
-
-  return (
-    <main className="min-h-screen flex items-center justify-center bg-black">
-      <h1 className="text-4xl font-bold text-white">{message}</h1>
-    </main>
-  );
+  return <AppRouter />;
 }
 
 export default App;

@@ -22,59 +22,68 @@ export interface Project {
   status: ProjectStatus;
   aiPlan: ProjectPlan | null;
   files: string[];
+
+  createdAt: Date;
+  updatedAt: Date;
 }
 
-const projectSchema = new Schema<Project>({
-   owner: {
-    type: Schema.Types.ObjectId,
-    ref: "User",
-    required: true,
-  },
+const projectSchema = new Schema<Project>(
+  {
+    owner: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
 
-  name: {
-    type: String,
-    required: true,
-    trim: true,
-  },
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+    },
 
-  prompt: {
-    type: String,
-    required: true,
-    trim: true,
-  },
+    prompt: {
+      type: String,
+      required: true,
+      trim: true,
+    },
 
-  framework: {
-    type: String,
-    enum: ["react-ts", "react-js", "vanilla"],
-    default: null,
-  },
+    framework: {
+      type: String,
+      enum: ["react-ts", "react-js", "vanilla"],
+      default: null,
+    },
 
-  status: {
-    type: String,
-    enum: [
-      "draft",
-      "planning",
-      "generating",
-      "building",
-      "ready",
-      "failed",
-    ],
-    default: "draft",
-  },
+    status: {
+      type: String,
+      enum: [
+        "draft",
+        "planning",
+        "generating",
+        "building",
+        "ready",
+        "failed",
+      ],
+      default: "draft",
+    },
 
-  aiPlan: {
-    type: Schema.Types.Mixed,
-    default: null,
-  },
+    aiPlan: {
+      type: Schema.Types.Mixed,
+      default: null,
+    },
 
-  files: {
-    type: [String],
-    default: [],
+    files: {
+      type: [String],
+      default: [],
+    },
   },
-}, {
-  timestamps: true,
-});
+  {
+    timestamps: true,
+  },
+);
 
 projectSchema.index({ owner: 1, updatedAt: -1 });
 
-export const ProjectModel = model<Project>("Project", projectSchema); 
+export const ProjectModel = model<Project>(
+  "Project",
+  projectSchema,
+);
