@@ -86,3 +86,20 @@ await project.save();
 
 return project;
 }
+export async function requireProject(
+  owner: string,
+  projectId: string,
+) {
+  const project = await getProjectById(
+    owner,
+    projectId,
+  );
+
+  if (!project) {
+    throw new NotFoundError(
+      "Project not found.",
+    );
+  }
+
+  return project;
+}

@@ -1,0 +1,18 @@
+import { Router } from "express";
+
+import { asyncHandler } from "../middleware/async-handler.js";
+import { requireAuth } from "../middleware/auth.middleware.js";
+
+import * as runtimeController from "./runtime.controller.js";
+
+const router = Router();
+
+router.post(
+  "/:projectId/start",
+  requireAuth,
+  asyncHandler(
+    runtimeController.startRuntime,
+  ),
+);
+
+export default router;
