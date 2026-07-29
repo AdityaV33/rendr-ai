@@ -1,9 +1,12 @@
 export interface Project {
-  _id: string;
+  id: string;
+  owner: string;
   name: string;
   prompt: string;
-  status: string;
   framework: string;
+  status: string;
+  aiPlan: unknown;
+  files: unknown[];
   createdAt: string;
   updatedAt: string;
 }

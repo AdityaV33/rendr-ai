@@ -1,16 +1,17 @@
-import type { ChildProcess } from "node:child_process";
+export const RuntimeStatus = {
+  IDLE: "idle",
+  GENERATING: "generating",
+  WRITING: "writing",
+  INSTALLING: "installing",
+  BUILDING: "building",
+  STARTING: "starting",
+  READY: "ready",
+  FAILED: "failed",
+  STOPPED: "stopped",
+} as const;
 
-export enum RuntimeStatus {
-  IDLE = "idle",
-  GENERATING = "generating",
-  WRITING = "writing",
-  INSTALLING = "installing",
-  BUILDING = "building",
-  STARTING = "starting",
-  READY = "ready",
-  FAILED = "failed",
-  STOPPED = "stopped",
-}
+export type RuntimeStatus =
+  (typeof RuntimeStatus)[keyof typeof RuntimeStatus];
 
 export interface WorkspaceInfo {
   projectId: string;
@@ -20,7 +21,6 @@ export interface WorkspaceInfo {
 export interface PreviewInfo {
   port: number;
   url: string;
-  process: ChildProcess;
 }
 
 export interface BuildResult {
@@ -35,4 +35,4 @@ export interface RuntimeState {
   workspace?: WorkspaceInfo;
   preview?: PreviewInfo;
   build?: BuildResult;
-}
+} 

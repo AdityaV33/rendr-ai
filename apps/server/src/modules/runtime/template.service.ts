@@ -2,34 +2,43 @@ import path from "node:path";
 
 import { NotFoundError } from "../lib/http-error.js";
 
-import {
-  TEMPLATE_ROOT,
-} from "./runtime.constants.js";
+import { TEMPLATES_ROOT } from "./runtime.constants.js";
 
 import * as filesystemService from "./filesystem.service.js";
 import * as workspaceService from "./workspace.service.js";
 
-export function getTemplatePath(): string {
+export function getTemplatePath(
+  framework: string,
+): string {
   return path.join(
     process.cwd(),
-    TEMPLATE_ROOT,
+    TEMPLATES_ROOT,
+    framework,
   );
 }
 
-export async function templateExists(): Promise<boolean> {
+export async function templateExists(
+  framework: string,
+): Promise<boolean> {
   return filesystemService.pathExists(
-    getTemplatePath(),
+    getTemplatePath(framework),
   );
 }
 
 export async function copyTemplate(
   projectId: string,
+  framework: string,
 ): Promise<string> {
-  const templatePath = getTemplatePath();
+  const templatePath = getTemplatePath(
+    framework,
+  );
 
-  if (!(await templateExists())) {
+
+  if (
+    !(await templateExists(framework))
+  ) {
     throw new NotFoundError(
-      "Project template not found.",
+      `Project template '${framework}' not found.`,
     );
   }
 

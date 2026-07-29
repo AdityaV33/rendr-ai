@@ -1,16 +1,63 @@
 import Editor from "@monaco-editor/react";
 
-import { mockProjectFiles } from "@/features/builder/data/mockProjectFiles";
-import { useBuilderStore } from "@/features/builder/store/builder.store";
+import { useWorkspaceStore } from "@/features/builder/store/workspace.store";
+
+const getLanguage = (
+  filePath: string,
+): string => {
+  if (filePath.endsWith(".tsx")) {
+    return "typescript";
+  }
+
+  if (filePath.endsWith(".ts")) {
+    return "typescript";
+  }
+
+  if (filePath.endsWith(".jsx")) {
+    return "javascript";
+  }
+
+  if (filePath.endsWith(".js")) {
+    return "javascript";
+  }
+
+  if (filePath.endsWith(".json")) {
+    return "json";
+  }
+
+  if (filePath.endsWith(".css")) {
+    return "css";
+  }
+
+  if (filePath.endsWith(".html")) {
+    return "html";
+  }
+
+  if (filePath.endsWith(".md")) {
+    return "markdown";
+  }
+
+  return "plaintext";
+};
 
 const CodeEditor = () => {
-  const selectedFile = useBuilderStore((state) => state.selectedFile);
+  const selectedFile =
+    useWorkspaceStore(
+      (state) => state.selectedFile,
+    );
 
-  const currentFile = mockProjectFiles.find(
-    (file) => file.path === selectedFile,
-  );
+  const openedFiles =
+    useWorkspaceStore(
+      (state) => state.openedFiles,
+    );
 
-  if (!currentFile) {
+  const updateOpenedFile =
+    useWorkspaceStore(
+      (state) =>
+        state.updateOpenedFile,
+    );
+
+  if (!selectedFile) {
     return (
       <div className="flex h-full items-center justify-center bg-neutral-950 text-neutral-500">
         Select a file from the explorer to begin.
@@ -18,14 +65,34 @@ const CodeEditor = () => {
     );
   }
 
+  const currentFile =
+    openedFiles[selectedFile];
+
+  if (!currentFile) {
+    return (
+      <div className="flex h-full items-center justify-center bg-neutral-950 text-neutral-500">
+        Loading file...
+      </div>
+    );
+  }
+
   return (
     <Editor
+      key={selectedFile}
       height="100%"
       theme="vs-dark"
-      language={currentFile.language}
+      language={getLanguage(
+        selectedFile,
+      )}
       value={currentFile.content}
+      onChange={(value) =>
+        updateOpenedFile(
+          selectedFile,
+          value ?? "",
+        )
+      }
       options={{
-        readOnly: true,
+        readOnly: false,
         minimap: {
           enabled: false,
         },

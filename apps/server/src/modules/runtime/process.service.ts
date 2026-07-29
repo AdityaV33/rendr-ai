@@ -70,3 +70,11 @@ export function startProcess(
     },
   );
 }
+
+export function stopProcess(
+  process: ChildProcess,
+): void {
+  if (!process.killed) {
+    process.kill();
+  }
+}

@@ -1,6 +1,6 @@
-export const WORKSPACES_ROOT = "runtime/workspaces";
+export const WORKSPACES_ROOT = "apps/server/runtime/workspaces";
 
-export const TEMPLATE_ROOT = "templates";
+export const TEMPLATES_ROOT = "apps/server/templates";
 
 export const PREVIEW_PORT_START = 5173;
 

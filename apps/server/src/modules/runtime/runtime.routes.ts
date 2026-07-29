@@ -15,4 +15,36 @@ router.post(
   ),
 );
 
+router.post(
+  "/:projectId/stop",
+  requireAuth,
+  asyncHandler(
+    runtimeController.stopRuntime,
+  ),
+);
+
+router.get(
+  "/:projectId/files",
+  requireAuth,
+  asyncHandler(
+    runtimeController.getWorkspaceTree,
+  ),
+);
+
+router.get(
+  "/:projectId/file",
+  requireAuth,
+  asyncHandler(
+    runtimeController.getWorkspaceFile,
+  ),
+);
+
+router.put(
+  "/:projectId/file",
+  requireAuth,
+  asyncHandler(
+    runtimeController.updateWorkspaceFile,
+  ),
+);
+
 export default router;

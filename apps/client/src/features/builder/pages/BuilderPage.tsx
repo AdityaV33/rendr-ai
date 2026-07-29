@@ -8,6 +8,7 @@ import BuilderHeader from "@/features/builder/components/BuilderHeader";
 import BuilderLayout from "@/features/builder/components/BuilderLayout";
 import CodeEditor from "@/features/builder/editor/CodeEditor";
 import { useBuilderStore } from "@/features/builder/store/builder.store";
+import { useWorkspaceStore } from "@/features/builder/store/workspace.store";
 
 const BuilderPage = () => {
   const { projectId } = useParams();
@@ -15,22 +16,39 @@ const BuilderPage = () => {
   const {
     currentProject,
     loading,
-    generating,
+    startingRuntime,
     error,
     loadProject,
-    generate,
+    startRuntime,
   } = useBuilderStore();
 
+  const {
+    setProject,
+    loadWorkspaceTree,
+  } = useWorkspaceStore();
+
   useEffect(() => {
-    if (!projectId) return;
+    if (!projectId) {
+      return;
+    }
+
+    setProject(projectId);
 
     void loadProject(projectId);
-  }, [projectId, loadProject]);
+  }, [
+    projectId,
+    loadProject,
+    setProject,
+  ]);
 
-  const handleGenerate = async () => {
-    if (!projectId) return;
+  const handleStartRuntime = async () => {
+    if (!projectId) {
+      return;
+    }
 
-    await generate(projectId);
+    await startRuntime(projectId);
+
+    await loadWorkspaceTree();
   };
 
   if (loading) {
@@ -66,8 +84,8 @@ const BuilderPage = () => {
             <div className="flex h-full flex-col">
               <BuilderHeader
                 project={currentProject}
-                generating={generating}
-                onGenerate={handleGenerate}
+                generating={startingRuntime}
+                onGenerate={handleStartRuntime}
               />
 
               <div className="min-h-0 flex-1">

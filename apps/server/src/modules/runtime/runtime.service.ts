@@ -24,29 +24,44 @@ export function initializeRuntime(
   return runtimeState;
 }
 
+export function hasRuntime(
+  projectId: string,
+): boolean {
+  return runtimeStates.has(projectId);
+}
+
 export function updateRuntimeStatus(
   projectId: string,
   status: RuntimeStatus,
 ): RuntimeState | undefined {
-  const runtimeState = runtimeStates.get(projectId);
+  const runtime = runtimeStates.get(projectId);
 
-  if (!runtimeState) {
+  if (!runtime) {
     return undefined;
   }
 
-  runtimeState.status = status;
+  runtime.status = status;
 
-  return runtimeState;
+  return runtime;
+}
+
+export function updateRuntime(
+  projectId: string,
+  updates: Partial<RuntimeState>,
+): RuntimeState | undefined {
+  const runtime = runtimeStates.get(projectId);
+
+  if (!runtime) {
+    return undefined;
+  }
+
+  Object.assign(runtime, updates);
+
+  return runtime;
 }
 
 export function removeRuntime(
   projectId: string,
 ): boolean {
   return runtimeStates.delete(projectId);
-}
-
-export function hasRuntime(
-  projectId: string,
-): boolean {
-  return runtimeStates.has(projectId);
 }

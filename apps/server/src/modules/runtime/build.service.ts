@@ -12,15 +12,20 @@ import {
 export async function buildProject(
   projectId: string,
 ): Promise<ProcessResult> {
-  if (!workspaceExists(projectId)) {
+  if (!(await workspaceExists(projectId))) {
     throw new BadRequestError(
       "Workspace does not exist. Please initialize the runtime first.",
     );
   }
 
-  const workspacePath = getWorkspacePath(projectId);
+  const workspacePath =
+    getWorkspacePath(projectId);
 
-  return runProcess("npm", ["run", "build"], {
-    cwd: workspacePath,
-  });
+  return runProcess(
+    "npm",
+    ["run", "build"],
+    {
+      cwd: workspacePath,
+    },
+  );
 }

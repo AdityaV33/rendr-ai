@@ -2,8 +2,14 @@ import { ChildProcess } from "node:child_process";
 
 import { BadRequestError } from "../lib/http-error.js";
 
-import { getAvailablePort } from "./port.service.js";
-import { startProcess } from "./process.service.js";
+import {
+  releasePort,
+  getAvailablePort,
+} from "./port.service.js";
+import {
+  startProcess,
+  stopProcess,
+} from "./process.service.js";
 import {
   getWorkspacePath,
   workspaceExists,
@@ -25,20 +31,39 @@ export function startPreview(
   }
 
   const workspacePath = getWorkspacePath(projectId);
-
   const port = getAvailablePort();
 
-  const process = startProcess(
-    "npm",
-    ["run", "dev", "--", "--host", "0.0.0.0", "--port", String(port)],
-    {
-      cwd: workspacePath,
-    },
-  );
+  try {
+    const process = startProcess(
+      "npm",
+      [
+        "run",
+        "dev",
+        "--",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        String(port),
+      ],
+      {
+        cwd: workspacePath,
+      },
+    );
 
-  return {
-    port,
-    url: `http://localhost:${port}`,
-    process,
-  };
+    return {
+      port,
+      url: `http://localhost:${port}`,
+      process,
+    };
+  } catch (error) {
+    releasePort(port);
+    throw error;
+  }
+}
+
+export function stopPreview(
+  preview: PreviewResult,
+): void {
+  stopProcess(preview.process);
+  releasePort(preview.port);
 }
