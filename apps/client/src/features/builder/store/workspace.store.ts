@@ -17,6 +17,8 @@ interface WorkspaceStore
   loadingWorkspace: boolean;
   openingFile: boolean;
   savingFile: boolean;
+  saveSuccess: boolean;
+  saveError: string | null;
 
   error: string | null;
 
@@ -39,6 +41,14 @@ interface WorkspaceStore
     filePath: string,
   ) => Promise<void>;
 
+  saveCurrentFile: () => Promise<void>;
+
+  isFileDirty: (
+    filePath: string,
+  ) => boolean;
+
+  hasUnsavedChanges: () => boolean;
+
   clearWorkspace: () => void;
 }
 
@@ -56,6 +66,8 @@ export const useWorkspaceStore =
       loadingWorkspace: false,
       openingFile: false,
       savingFile: false,
+      saveSuccess: false,
+      saveError: null,
 
       error: null,
 
@@ -71,6 +83,8 @@ export const useWorkspaceStore =
             openedFiles: {},
             selectedFile: null,
             error: null,
+            saveError: null,
+            saveSuccess: false,
           };
         });
       },
@@ -162,6 +176,8 @@ export const useWorkspaceStore =
               path: file.path,
               content:
                 file.content,
+              savedContent:
+                file.content,
             };
 
           set((state) => ({
@@ -200,15 +216,23 @@ export const useWorkspaceStore =
         filePath,
         content,
       ) => {
-        set((state) => ({
-          openedFiles: {
-            ...state.openedFiles,
-            [filePath]: {
-              path: filePath,
-              content,
+        set((state) => {
+          const existing =
+            state.openedFiles[filePath];
+
+          return {
+            openedFiles: {
+              ...state.openedFiles,
+              [filePath]: {
+                path: filePath,
+                content,
+                savedContent:
+                  existing?.savedContent ??
+                  content,
+              },
             },
-          },
-        }));
+          };
+        });
       },
 
       saveFile: async (
@@ -233,7 +257,8 @@ export const useWorkspaceStore =
         try {
           set({
             savingFile: true,
-            error: null,
+            saveError: null,
+            saveSuccess: false,
           });
 
           await updateWorkspaceFile(
@@ -242,9 +267,25 @@ export const useWorkspaceStore =
             file.content,
           );
 
-          set({
+          set((state) => ({
             savingFile: false,
-          });
+            saveSuccess: true,
+            openedFiles: {
+              ...state.openedFiles,
+              [filePath]: {
+                ...state.openedFiles[
+                  filePath
+                ],
+                savedContent:
+                  file.content,
+              },
+            },
+          }));
+
+          // Reset success indicator after 2 seconds
+          setTimeout(() => {
+            set({ saveSuccess: false });
+          }, 2000);
         } catch (error) {
           let message =
             "Failed to save file.";
@@ -261,10 +302,54 @@ export const useWorkspaceStore =
           }
 
           set({
-            error: message,
+            saveError: message,
             savingFile: false,
+            saveSuccess: false,
           });
+
+          // Reset error after 3 seconds
+          setTimeout(() => {
+            set({ saveError: null });
+          }, 3000);
         }
+      },
+
+      saveCurrentFile: async () => {
+        const selectedFile =
+          get().selectedFile;
+
+        if (!selectedFile) {
+          return;
+        }
+
+        await get().saveFile(selectedFile);
+      },
+
+      isFileDirty: (filePath) => {
+        const file =
+          get().openedFiles[filePath];
+
+        if (!file) {
+          return false;
+        }
+
+        return (
+          file.content !==
+          file.savedContent
+        );
+      },
+
+      hasUnsavedChanges: () => {
+        const openedFiles =
+          get().openedFiles;
+
+        return Object.values(
+          openedFiles,
+        ).some(
+          (file) =>
+            file.content !==
+            file.savedContent,
+        );
       },
 
       clearWorkspace: () => {
@@ -274,6 +359,8 @@ export const useWorkspaceStore =
           openedFiles: {},
           selectedFile: null,
           error: null,
+          saveError: null,
+          saveSuccess: false,
         });
       },
     }),

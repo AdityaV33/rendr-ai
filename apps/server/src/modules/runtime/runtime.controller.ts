@@ -5,6 +5,7 @@ import type {
 
 import * as runtimeManagerService from "./runtime-manager.service.js";
 import * as workspaceFileService from "./workspace-file.service.js";
+import * as projectService from "../projects/project.service.js";
 
 export async function startRuntime(
   req: Request,
@@ -88,6 +89,23 @@ export async function updateWorkspaceFile(
     content,
   } = req.body;
 
+  if (
+    !filePath ||
+    typeof filePath !== "string" ||
+    typeof content !== "string"
+  ) {
+    return res.status(400).json({
+      message:
+        "path and content are required.",
+    });
+  }
+
+  // Validate project ownership
+  await projectService.requireProject(
+    req.user.id,
+    projectId,
+  );
+
   await workspaceFileService.updateWorkspaceFile(
     projectId,
     filePath,
@@ -96,7 +114,7 @@ export async function updateWorkspaceFile(
 
   return res.status(200).json({
     message:
-      "File updated successfully.",
+      "File saved successfully.",
   });
 }
 

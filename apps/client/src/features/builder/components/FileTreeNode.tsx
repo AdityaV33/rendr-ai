@@ -24,6 +24,11 @@ const FileTreeNode = ({
       (state) => state.openFile,
     );
 
+  const isFileDirty =
+    useWorkspaceStore(
+      (state) => state.isFileDirty,
+    );
+
   if (node.type === "folder" && HIDDEN_FOLDERS.includes(node.name)) {
     return null;
   }
@@ -40,6 +45,10 @@ const FileTreeNode = ({
   const isSelected =
     selectedFile === node.path;
 
+  const isDirty =
+    node.type === "file" &&
+    isFileDirty(node.path);
+
   return (
     <div className="ml-1">
       <div
@@ -53,7 +62,12 @@ const FileTreeNode = ({
         <span className="text-base flex-shrink-0">
           {node.type === "folder" ? (isExpanded ? "📂" : "📁") : "📄"}
         </span>
-        <span className="truncate">{node.name}</span>
+        <span className="truncate">
+          {node.name}
+          {isDirty && (
+            <span className="ml-1 text-amber-400" title="Unsaved changes">●</span>
+          )}
+        </span>
       </div>
 
       {node.type === "folder" &&

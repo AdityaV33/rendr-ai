@@ -1,7 +1,30 @@
 import path from "node:path";
 
+import { BadRequestError } from "../lib/http-error.js";
 import * as filesystemService from "./filesystem.service.js";
 import * as workspaceService from "./workspace.service.js";
+
+/**
+ * Resolve a user-provided file path within a workspace,
+ * rejecting any path traversal attempts.
+ */
+function resolveWorkspaceFilePath(
+  workspacePath: string,
+  filePath: string,
+): string {
+  const resolved = path.resolve(
+    workspacePath,
+    filePath,
+  );
+
+  if (!resolved.startsWith(workspacePath)) {
+    throw new BadRequestError(
+      "Invalid file path.",
+    );
+  }
+
+  return resolved;
+}
 
 export async function getWorkspaceTree(
   projectId: string,
@@ -26,11 +49,14 @@ export async function getWorkspaceFile(
       projectId,
     );
 
-  return filesystemService.readFile(
-    path.join(
+  const resolved =
+    resolveWorkspaceFilePath(
       workspacePath,
       filePath,
-    ),
+    );
+
+  return filesystemService.readFile(
+    resolved,
   );
 }
 
@@ -44,11 +70,14 @@ export async function updateWorkspaceFile(
       projectId,
     );
 
-  await filesystemService.writeFile(
-    path.join(
+  const resolved =
+    resolveWorkspaceFilePath(
       workspacePath,
       filePath,
-    ),
+    );
+
+  await filesystemService.writeFile(
+    resolved,
     content,
   );
 }

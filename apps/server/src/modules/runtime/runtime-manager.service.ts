@@ -142,6 +142,12 @@ export async function startRuntime(
       RuntimeStatus.READY,
     );
 
+    // Persist project status as ready in the database
+    await projectService.updateProjectStatus(
+      projectId,
+      "ready",
+    );
+
     return (
       runtimeService.getRuntimeState(
         projectId,

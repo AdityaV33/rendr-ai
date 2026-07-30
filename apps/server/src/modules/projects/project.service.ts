@@ -116,3 +116,17 @@ export async function requireProject(
 
   return project;
 }
+
+export async function updateProjectStatus(
+  projectId: string,
+  status: import("./project.model.js").ProjectStatus,
+) {
+  return ProjectModel.findByIdAndUpdate(
+    projectId,
+    { status },
+    {
+      new: true,
+      runValidators: true,
+    },
+  );
+}

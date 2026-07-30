@@ -1,3 +1,4 @@
+import { useEffect, useCallback } from "react";
 import Editor from "@monaco-editor/react";
 
 import { useWorkspaceStore } from "@/features/builder/store/workspace.store";
@@ -56,6 +57,39 @@ const CodeEditor = () => {
       (state) =>
         state.updateOpenedFile,
     );
+
+  const saveCurrentFile =
+    useWorkspaceStore(
+      (state) =>
+        state.saveCurrentFile,
+    );
+
+  const handleSave = useCallback(
+    (e: KeyboardEvent) => {
+      if (
+        (e.ctrlKey || e.metaKey) &&
+        e.key === "s"
+      ) {
+        e.preventDefault();
+        void saveCurrentFile();
+      }
+    },
+    [saveCurrentFile],
+  );
+
+  useEffect(() => {
+    window.addEventListener(
+      "keydown",
+      handleSave,
+    );
+
+    return () => {
+      window.removeEventListener(
+        "keydown",
+        handleSave,
+      );
+    };
+  }, [handleSave]);
 
   if (!selectedFile) {
     return (
