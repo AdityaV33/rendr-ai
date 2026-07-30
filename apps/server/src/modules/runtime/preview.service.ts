@@ -23,6 +23,7 @@ export interface PreviewResult {
 
 export function startPreview(
   projectId: string,
+  framework: string,
 ): PreviewResult {
   if (!workspaceExists(projectId)) {
     throw new BadRequestError(
@@ -32,6 +33,16 @@ export function startPreview(
 
   const workspacePath = getWorkspacePath(projectId);
   const port = getAvailablePort();
+
+  console.log("========================================");
+  console.log("RUNTIME STARTUP LOGGING");
+  console.log(`Project ID: ${projectId}`);
+  console.log(`Framework: ${framework}`);
+  console.log(`Workspace path: ${workspacePath}`);
+  console.log(`CWD passed to spawn(): ${workspacePath}`);
+  console.log(`Assigned port: ${port}`);
+  console.log(`Preview URL: http://127.0.0.1:${port}`);
+  console.log("========================================");
 
   try {
     const process = startProcess(
@@ -44,15 +55,18 @@ export function startPreview(
         "0.0.0.0",
         "--port",
         String(port),
+        "--strictPort"
       ],
       {
         cwd: workspacePath,
       },
     );
 
+    console.log(`[Spawn] Absolute path of executed process: ${process.spawnfile}`);
+
     return {
       port,
-      url: `http://localhost:${port}`,
+      url: `http://127.0.0.1:${port}`,
       process,
     };
   } catch (error) {

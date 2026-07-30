@@ -1,7 +1,10 @@
 import { useBuilderStore } from "@/features/builder/store/builder.store";
-import { useWorkspaceStore } from "@/features/builder/store/workspace.store";
 
-const BuilderAssistant = () => {
+interface BuilderAssistantProps {
+  onGenerate: () => void;
+}
+
+const BuilderAssistant = ({ onGenerate }: BuilderAssistantProps) => {
   const currentProject = useBuilderStore(
     (state) => state.currentProject,
   );
@@ -13,32 +16,6 @@ const BuilderAssistant = () => {
   const error = useBuilderStore(
     (state) => state.error,
   );
-
-  const startRuntime = useBuilderStore(
-    (state) => state.startRuntime,
-  );
-
-  const generateProject = useBuilderStore(
-    (state) => state.generateProject,
-  );
-
-  const loadWorkspaceTree = useWorkspaceStore(
-    (state) => state.loadWorkspaceTree,
-  );
-
-  const handleStartRuntime = async () => {
-    if (!currentProject) return;
-
-    try {
-      if (!currentProject.framework) {
-        await generateProject(currentProject.id);
-      }
-      await startRuntime(currentProject.id);
-      await loadWorkspaceTree();
-    } catch (err) {
-      console.error(err);
-    }
-  };
 
   return (
     <div className="flex h-full flex-col">
@@ -69,7 +46,7 @@ const BuilderAssistant = () => {
       <div className="border-t border-neutral-800 p-4">
         <button
           type="button"
-          onClick={handleStartRuntime}
+          onClick={onGenerate}
           disabled={
             !currentProject ||
             startingRuntime

@@ -99,3 +99,18 @@ export async function updateWorkspaceFile(
       "File updated successfully.",
   });
 }
+
+export async function getRuntimeStatus(
+  req: Request,
+  res: Response,
+) {
+  const projectId = req.params
+    .projectId as string;
+
+  const runtime =
+    runtimeManagerService.getRuntimeState(
+      projectId,
+    );
+
+  return res.status(200).json(runtime || null);
+}

@@ -2,7 +2,9 @@ import {
   ChildProcess,
   SpawnOptions,
   spawn,
+  exec,
 } from "node:child_process";
+import os from "node:os";
 
 export interface ProcessResult {
   success: boolean;
@@ -72,9 +74,15 @@ export function startProcess(
 }
 
 export function stopProcess(
-  process: ChildProcess,
+  childProcess: ChildProcess,
 ): void {
-  if (!process.killed) {
-    process.kill();
+  if (!childProcess.killed && childProcess.pid) {
+    if (os.platform() === "win32") {
+      exec(`taskkill /pid ${childProcess.pid} /t /f`, () => {
+        // Ignore errors from taskkill
+      });
+    } else {
+      childProcess.kill();
+    }
   }
 }

@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import AppLayout from "@/components/layout/AppLayout";
-import BuilderAssistant from "@/features/builder/components/BuilderAssistant";
+import BuilderSidebar from "@/features/builder/components/BuilderSidebar";
 import BuilderExplorer from "@/features/builder/components/BuilderExplorer";
 import BuilderHeader from "@/features/builder/components/BuilderHeader";
 import BuilderLayout from "@/features/builder/components/BuilderLayout";
@@ -18,9 +18,9 @@ const BuilderPage = () => {
   const {
     currentProject,
     loading,
-    startingRuntime,
     error,
     loadProject,
+    loadRuntimeStatus,
     generateProject,
     startRuntime,
   } = useBuilderStore();
@@ -37,11 +37,23 @@ const BuilderPage = () => {
 
     setProject(projectId);
 
-    void loadProject(projectId);
+    const init = async () => {
+      await loadProject(projectId);
+      
+      const { currentProject } = useBuilderStore.getState();
+      if (currentProject?.framework) {
+        await loadWorkspaceTree();
+      }
+    };
+
+    void init();
+    void loadRuntimeStatus(projectId);
   }, [
     projectId,
     loadProject,
+    loadRuntimeStatus,
     setProject,
+    loadWorkspaceTree,
   ]);
 
   const handleStartRuntime = async () => {
@@ -105,8 +117,6 @@ const BuilderPage = () => {
             <div className="flex h-full flex-col">
               <BuilderHeader
                 project={currentProject}
-                generating={startingRuntime}
-                onGenerate={handleStartRuntime}
                 onDelete={handleDeleteProject}
               />
 
@@ -116,7 +126,11 @@ const BuilderPage = () => {
             </div>
           )
         }
-        right={<BuilderAssistant />}
+        right={
+          <BuilderSidebar 
+            onGenerate={handleStartRuntime} 
+          />
+        }
       />
     </AppLayout>
   );

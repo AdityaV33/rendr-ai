@@ -28,6 +28,14 @@ const stopRuntime = async (projectId: string) => {
   return response.data;
 };
 
+const getRuntimeStatus = async (projectId: string) => {
+  const response = await api.get(
+    `/runtime/${projectId}/status`,
+  );
+
+  return response.data;
+};
+
 const getWorkspaceTree = async (
   projectId: string,
 ) => {
@@ -80,6 +88,7 @@ export {
   generateProject,
   startRuntime,
   stopRuntime,
+  getRuntimeStatus,
   getWorkspaceTree,
   getWorkspaceFile,
   updateWorkspaceFile,

@@ -5,15 +5,11 @@ import type { Project } from "@/features/builder/types/project";
 
 interface BuilderHeaderProps {
   project: Project;
-  generating: boolean;
-  onGenerate: () => void;
   onDelete?: () => void;
 }
 
 const BuilderHeader = ({
   project,
-  generating,
-  onGenerate,
   onDelete,
 }: BuilderHeaderProps) => {
   const navigate = useNavigate();
@@ -69,14 +65,6 @@ const BuilderHeader = ({
           onClick={handleLogout}
         >
           Logout
-        </button>
-
-        <button
-          onClick={onGenerate}
-          disabled={generating}
-          className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-black transition hover:bg-neutral-200 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {generating ? "Generating..." : "Generate"}
         </button>
       </div>
     </header>

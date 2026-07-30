@@ -4,6 +4,7 @@ import { create } from "zustand";
 import {
   getProject,
   generateProject as generateProjectRequest,
+  getRuntimeStatus as getRuntimeStatusRequest,
   startRuntime as startRuntimeRequest,
   stopRuntime as stopRuntimeRequest,
 } from "@/features/builder/services/builder.service";
@@ -22,6 +23,7 @@ interface BuilderStore {
   error: string | null;
 
   loadProject: (projectId: string) => Promise<void>;
+  loadRuntimeStatus: (projectId: string) => Promise<void>;
   generateProject: (projectId: string) => Promise<void>;
   startRuntime: (projectId: string) => Promise<void>;
   stopRuntime: (projectId: string) => Promise<void>;
@@ -29,7 +31,7 @@ interface BuilderStore {
   selectFile: (file: string | null) => void;
 }
 
-export const useBuilderStore = create<BuilderStore>((set) => ({
+export const useBuilderStore = create<BuilderStore>((set, get) => ({
   currentProject: null,
   runtime: null,
 
@@ -42,6 +44,15 @@ export const useBuilderStore = create<BuilderStore>((set) => ({
 
   loadProject: async (projectId) => {
     try {
+      const state = get();
+      if (state.currentProject?.id !== projectId) {
+        set({
+          currentProject: null,
+          runtime: null,
+          selectedFile: null,
+        });
+      }
+
       set({
         loading: true,
         error: null,
@@ -64,6 +75,16 @@ export const useBuilderStore = create<BuilderStore>((set) => ({
         error: message,
         loading: false,
       });
+    }
+  },
+
+  loadRuntimeStatus: async (projectId) => {
+    try {
+      const runtime = await getRuntimeStatusRequest(projectId);
+      set({ runtime });
+    } catch (error) {
+      console.error("Failed to load runtime status:", error);
+      set({ runtime: null });
     }
   },
 

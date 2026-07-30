@@ -24,6 +24,14 @@ router.post(
 );
 
 router.get(
+  "/:projectId/status",
+  requireAuth,
+  asyncHandler(
+    runtimeController.getRuntimeStatus,
+  ),
+);
+
+router.get(
   "/:projectId/files",
   requireAuth,
   asyncHandler(

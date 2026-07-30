@@ -50,6 +50,7 @@ export async function startRuntime(
   }
 
   if (workspaceCreated) {
+    console.log(`[Runtime Manager] Copying template for framework: ${project.framework}`);
     await templateService.copyTemplate(
       projectId,
       project.framework,
@@ -128,7 +129,7 @@ export async function startRuntime(
     );
 
     const preview =
-      startPreview(projectId);
+      startPreview(projectId, project.framework);
 
     runtimeService.updateRuntime(
       projectId,
@@ -180,4 +181,8 @@ export function stopRuntime(
   runtimeService.removeRuntime(
     projectId,
   );
+}
+
+export function getRuntimeState(projectId: string) {
+  return runtimeService.getRuntimeState(projectId);
 }
