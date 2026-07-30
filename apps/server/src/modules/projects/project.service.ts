@@ -4,6 +4,8 @@ import {
 import { planProject } from "../ai/index.js";
 import type { ProjectPlan } from "../ai/index.js";
 import { NotFoundError } from "../lib/http-error.js";
+import * as workspaceService from "../runtime/workspace.service.js";
+import * as runtimeManagerService from "../runtime/runtime-manager.service.js";
 
 
 export async function createProject(
@@ -55,10 +57,21 @@ export async function deleteProject(
   owner: string,
   projectId: string
 ) {
-  return ProjectModel.findOneAndDelete({
+  const project = await ProjectModel.findOneAndDelete({
     _id: projectId,
     owner,
   });
+
+  if (project) {
+    try {
+      runtimeManagerService.stopRuntime(projectId);
+      await workspaceService.deleteWorkspace(projectId);
+    } catch (err) {
+      console.error(`Failed to clean up resources for project ${projectId}`, err);
+    }
+  }
+
+  return project;
 }
 export async function generateProject(
   owner: string,

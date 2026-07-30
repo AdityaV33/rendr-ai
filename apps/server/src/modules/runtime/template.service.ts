@@ -7,13 +7,21 @@ import { TEMPLATES_ROOT } from "./runtime.constants.js";
 import * as filesystemService from "./filesystem.service.js";
 import * as workspaceService from "./workspace.service.js";
 
+const TEMPLATE_REGISTRY: Record<string, string> = {
+  "react-ts": "react",
+  "react-js": "react",
+  "vanilla": "vanilla",
+};
+
 export function getTemplatePath(
   framework: string,
 ): string {
+  const templateName = TEMPLATE_REGISTRY[framework] ?? framework;
+
   return path.join(
     process.cwd(),
     TEMPLATES_ROOT,
-    framework,
+    templateName,
   );
 }
 

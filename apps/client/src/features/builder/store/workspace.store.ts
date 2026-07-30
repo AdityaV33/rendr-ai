@@ -59,11 +59,19 @@ export const useWorkspaceStore =
 
       error: null,
 
-      setProject: (
-        projectId,
-      ) => {
-        set({
-          projectId,
+      setProject: (projectId) => {
+        set((state) => {
+          if (state.projectId === projectId) {
+            return { projectId };
+          }
+
+          return {
+            projectId,
+            workspaceTree: [],
+            openedFiles: {},
+            selectedFile: null,
+            error: null,
+          };
         });
       },
 

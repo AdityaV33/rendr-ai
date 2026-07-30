@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
 import AppLayout from "@/components/layout/AppLayout";
 import BuilderAssistant from "@/features/builder/components/BuilderAssistant";
@@ -9,9 +9,11 @@ import BuilderLayout from "@/features/builder/components/BuilderLayout";
 import CodeEditor from "@/features/builder/editor/CodeEditor";
 import { useBuilderStore } from "@/features/builder/store/builder.store";
 import { useWorkspaceStore } from "@/features/builder/store/workspace.store";
+import { deleteProject } from "@/features/builder/services/builder.service";
 
 const BuilderPage = () => {
   const { projectId } = useParams();
+  const navigate = useNavigate();
 
   const {
     currentProject,
@@ -19,6 +21,7 @@ const BuilderPage = () => {
     startingRuntime,
     error,
     loadProject,
+    generateProject,
     startRuntime,
   } = useBuilderStore();
 
@@ -42,13 +45,31 @@ const BuilderPage = () => {
   ]);
 
   const handleStartRuntime = async () => {
-    if (!projectId) {
+    if (!projectId || !currentProject) {
       return;
     }
 
-    await startRuntime(projectId);
+    try {
+      if (!currentProject.framework) {
+        await generateProject(projectId);
+      }
+      await startRuntime(projectId);
+      await loadWorkspaceTree();
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
-    await loadWorkspaceTree();
+  const handleDeleteProject = async () => {
+    if (!projectId) return;
+
+    try {
+      await deleteProject(projectId);
+      navigate("/dashboard");
+    } catch (err) {
+      console.error("Failed to delete project:", err);
+      alert("Failed to delete project");
+    }
   };
 
   if (loading) {
@@ -86,6 +107,7 @@ const BuilderPage = () => {
                 project={currentProject}
                 generating={startingRuntime}
                 onGenerate={handleStartRuntime}
+                onDelete={handleDeleteProject}
               />
 
               <div className="min-h-0 flex-1">

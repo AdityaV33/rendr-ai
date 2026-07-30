@@ -9,3 +9,6 @@ dist/
 
 .DS_Store
 Thumbs.db
+
+# Generated runtime projects
+apps/server/runtime/workspaces/

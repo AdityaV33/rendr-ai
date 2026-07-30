@@ -3,6 +3,7 @@ import { create } from "zustand";
 
 import {
   getProject,
+  generateProject as generateProjectRequest,
   startRuntime as startRuntimeRequest,
   stopRuntime as stopRuntimeRequest,
 } from "@/features/builder/services/builder.service";
@@ -21,6 +22,7 @@ interface BuilderStore {
   error: string | null;
 
   loadProject: (projectId: string) => Promise<void>;
+  generateProject: (projectId: string) => Promise<void>;
   startRuntime: (projectId: string) => Promise<void>;
   stopRuntime: (projectId: string) => Promise<void>;
 
@@ -62,6 +64,33 @@ export const useBuilderStore = create<BuilderStore>((set) => ({
         error: message,
         loading: false,
       });
+    }
+  },
+
+  generateProject: async (projectId) => {
+    try {
+      set({
+        startingRuntime: true,
+        error: null,
+      });
+
+      const project = await generateProjectRequest(projectId);
+
+      set({
+        currentProject: project,
+      });
+    } catch (error) {
+      let message = "Failed to generate project.";
+
+      if (axios.isAxiosError(error)) {
+        message = error.response?.data?.message ?? message;
+      }
+
+      set({
+        error: message,
+        startingRuntime: false,
+      });
+      throw error;
     }
   },
 

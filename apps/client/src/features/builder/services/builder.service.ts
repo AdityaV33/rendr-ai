@@ -6,6 +6,12 @@ const getProject = async (projectId: string) => {
   return response.data;
 };
 
+const generateProject = async (projectId: string) => {
+  const response = await api.post(`/projects/${projectId}/generate`);
+
+  return response.data;
+};
+
 const startRuntime = async (projectId: string) => {
   const response = await api.post(
     `/runtime/${projectId}/start`,
@@ -64,11 +70,18 @@ const updateWorkspaceFile = async (
   return response.data;
 };
 
+const deleteProject = async (projectId: string) => {
+  const response = await api.delete(`/projects/${projectId}`);
+  return response.data;
+};
+
 export {
   getProject,
+  generateProject,
   startRuntime,
   stopRuntime,
   getWorkspaceTree,
   getWorkspaceFile,
   updateWorkspaceFile,
+  deleteProject,
 };

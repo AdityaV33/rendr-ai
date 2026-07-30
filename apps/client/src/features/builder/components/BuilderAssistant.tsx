@@ -1,4 +1,5 @@
 import { useBuilderStore } from "@/features/builder/store/builder.store";
+import { useWorkspaceStore } from "@/features/builder/store/workspace.store";
 
 const BuilderAssistant = () => {
   const currentProject = useBuilderStore(
@@ -17,10 +18,26 @@ const BuilderAssistant = () => {
     (state) => state.startRuntime,
   );
 
+  const generateProject = useBuilderStore(
+    (state) => state.generateProject,
+  );
+
+  const loadWorkspaceTree = useWorkspaceStore(
+    (state) => state.loadWorkspaceTree,
+  );
+
   const handleStartRuntime = async () => {
     if (!currentProject) return;
 
-    await startRuntime(currentProject.id);
+    try {
+      if (!currentProject.framework) {
+        await generateProject(currentProject.id);
+      }
+      await startRuntime(currentProject.id);
+      await loadWorkspaceTree();
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   return (
