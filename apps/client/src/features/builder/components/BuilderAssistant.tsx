@@ -1,25 +1,21 @@
 import { useBuilderStore } from "@/features/builder/store/builder.store";
 
-const BuilderAssistant = () => {
+interface BuilderAssistantProps {
+  onGenerate: () => void;
+}
+
+const BuilderAssistant = ({ onGenerate }: BuilderAssistantProps) => {
   const currentProject = useBuilderStore(
     (state) => state.currentProject,
   );
 
-  const generating = useBuilderStore(
-    (state) => state.generating,
+  const startingRuntime = useBuilderStore(
+    (state) => state.startingRuntime,
   );
 
-  const error = useBuilderStore((state) => state.error);
-
-  const generate = useBuilderStore(
-    (state) => state.generate,
+  const error = useBuilderStore(
+    (state) => state.error,
   );
-
-  const handleGenerate = async () => {
-    if (!currentProject) return;
-
-    await generate(currentProject._id);
-  };
 
   return (
     <div className="flex h-full flex-col">
@@ -50,11 +46,16 @@ const BuilderAssistant = () => {
       <div className="border-t border-neutral-800 p-4">
         <button
           type="button"
-          onClick={handleGenerate}
-          disabled={!currentProject || generating}
+          onClick={onGenerate}
+          disabled={
+            !currentProject ||
+            startingRuntime
+          }
           className="w-full rounded-lg bg-blue-600 px-4 py-2 font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-neutral-700"
         >
-          {generating ? "Generating..." : "Generate Project"}
+          {startingRuntime
+            ? "Starting Runtime..."
+            : "Generate Project"}
         </button>
       </div>
     </div>

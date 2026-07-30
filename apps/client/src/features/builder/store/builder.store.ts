@@ -2,37 +2,57 @@ import axios from "axios";
 import { create } from "zustand";
 
 import {
-  generateProject,
   getProject,
+  generateProject as generateProjectRequest,
+  getRuntimeStatus as getRuntimeStatusRequest,
+  startRuntime as startRuntimeRequest,
+  stopRuntime as stopRuntimeRequest,
 } from "@/features/builder/services/builder.service";
 import type { Project } from "@/features/builder/types/project";
+import type { RuntimeState } from "@/features/builder/types/runtime";
 
 interface BuilderStore {
   currentProject: Project | null;
+  runtime: RuntimeState | null;
+
   selectedFile: string | null;
 
   loading: boolean;
-  generating: boolean;
+  startingRuntime: boolean;
 
   error: string | null;
 
   loadProject: (projectId: string) => Promise<void>;
-  generate: (projectId: string) => Promise<void>;
+  loadRuntimeStatus: (projectId: string) => Promise<void>;
+  generateProject: (projectId: string) => Promise<void>;
+  startRuntime: (projectId: string) => Promise<void>;
+  stopRuntime: (projectId: string) => Promise<void>;
 
-  selectFile: (file: string |null) => void;
+  selectFile: (file: string | null) => void;
 }
 
-export const useBuilderStore = create<BuilderStore>((set) => ({
+export const useBuilderStore = create<BuilderStore>((set, get) => ({
   currentProject: null,
+  runtime: null,
+
   selectedFile: null,
 
   loading: false,
-  generating: false,
+  startingRuntime: false,
 
   error: null,
 
   loadProject: async (projectId) => {
     try {
+      const state = get();
+      if (state.currentProject?.id !== projectId) {
+        set({
+          currentProject: null,
+          runtime: null,
+          selectedFile: null,
+        });
+      }
+
       set({
         loading: true,
         error: null,
@@ -58,18 +78,27 @@ export const useBuilderStore = create<BuilderStore>((set) => ({
     }
   },
 
-  generate: async (projectId) => {
+  loadRuntimeStatus: async (projectId) => {
+    try {
+      const runtime = await getRuntimeStatusRequest(projectId);
+      set({ runtime });
+    } catch (error) {
+      console.error("Failed to load runtime status:", error);
+      set({ runtime: null });
+    }
+  },
+
+  generateProject: async (projectId) => {
     try {
       set({
-        generating: true,
+        startingRuntime: true,
         error: null,
       });
 
-      const project = await generateProject(projectId);
+      const project = await generateProjectRequest(projectId);
 
       set({
         currentProject: project,
-        generating: false,
       });
     } catch (error) {
       let message = "Failed to generate project.";
@@ -80,7 +109,55 @@ export const useBuilderStore = create<BuilderStore>((set) => ({
 
       set({
         error: message,
-        generating: false,
+        startingRuntime: false,
+      });
+      throw error;
+    }
+  },
+
+  startRuntime: async (projectId) => {
+    try {
+      set({
+        startingRuntime: true,
+        error: null,
+      });
+
+      const runtime = await startRuntimeRequest(projectId);
+
+      set({
+        runtime,
+        startingRuntime: false,
+      });
+    } catch (error) {
+      let message = "Failed to start runtime.";
+
+      if (axios.isAxiosError(error)) {
+        message = error.response?.data?.message ?? message;
+      }
+
+      set({
+        error: message,
+        startingRuntime: false,
+      });
+    }
+  },
+
+  stopRuntime: async (projectId) => {
+    try {
+      await stopRuntimeRequest(projectId);
+
+      set({
+        runtime: null,
+      });
+    } catch (error) {
+      let message = "Failed to stop runtime.";
+
+      if (axios.isAxiosError(error)) {
+        message = error.response?.data?.message ?? message;
+      }
+
+      set({
+        error: message,
       });
     }
   },

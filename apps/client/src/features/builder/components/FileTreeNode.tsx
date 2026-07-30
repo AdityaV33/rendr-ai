@@ -1,45 +1,89 @@
-import { useBuilderStore } from "@/features/builder/store/builder.store";
+import { useState } from "react";
+import { useWorkspaceStore } from "@/features/builder/store/workspace.store";
 import type { FileNode } from "@/features/builder/types/fileTree";
 
 interface FileTreeNodeProps {
   node: FileNode;
 }
 
-const FileTreeNode = ({ node }: FileTreeNodeProps) => {
-  const selectedFile = useBuilderStore((state) => state.selectedFile);
-  const selectFile = useBuilderStore((state) => state.selectFile);
+const HIDDEN_FOLDERS = ["node_modules", ".git", ".vscode", "dist"];
 
-  const handleClick = () => {
+const FileTreeNode = ({
+  node,
+}: FileTreeNodeProps) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  const selectedFile =
+    useWorkspaceStore(
+      (state) =>
+        state.selectedFile,
+    );
+
+  const openFile =
+    useWorkspaceStore(
+      (state) => state.openFile,
+    );
+
+  const isFileDirty =
+    useWorkspaceStore(
+      (state) => state.isFileDirty,
+    );
+
+  if (node.type === "folder" && HIDDEN_FOLDERS.includes(node.name)) {
+    return null;
+  }
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (node.type === "file") {
-      selectFile(node.path);
+      void openFile(node.path);
+    } else if (node.type === "folder") {
+      setIsExpanded(!isExpanded);
     }
   };
 
-  const isSelected = selectedFile === node.path;
+  const isSelected =
+    selectedFile === node.path;
+
+  const isDirty =
+    node.type === "file" &&
+    isFileDirty(node.path);
 
   return (
-    <div className="ml-2">
+    <div className="ml-1">
       <div
         onClick={handleClick}
-        className={`rounded px-2 py-1 text-sm transition-colors ${
+        className={`cursor-pointer flex items-center gap-2 rounded px-2 py-1 text-sm transition-colors select-none ${
           isSelected
             ? "bg-neutral-700 text-white"
-            : "text-neutral-200 hover:bg-neutral-800"
+            : "text-neutral-300 hover:bg-neutral-800"
         }`}
       >
-        {node.type === "folder" ? "📁" : "📄"} {node.name}
+        <span className="text-base flex-shrink-0">
+          {node.type === "folder" ? (isExpanded ? "📂" : "📁") : "📄"}
+        </span>
+        <span className="truncate">
+          {node.name}
+          {isDirty && (
+            <span className="ml-1 text-amber-400" title="Unsaved changes">●</span>
+          )}
+        </span>
       </div>
 
-      {node.type === "folder" && node.children && (
-        <div className="ml-4 border-l border-neutral-800 pl-2">
-          {node.children.map((child) => (
-            <FileTreeNode
-              key={child.path}
-              node={child}
-            />
-          ))}
-        </div>
-      )}
+      {node.type === "folder" &&
+        node.children &&
+        isExpanded && (
+          <div className="ml-3 border-l border-neutral-800 pl-1">
+            {node.children.map(
+              (child) => (
+                <FileTreeNode
+                  key={child.path}
+                  node={child}
+                />
+              ),
+            )}
+          </div>
+        )}
     </div>
   );
 };

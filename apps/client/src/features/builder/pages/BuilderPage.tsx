@@ -1,36 +1,87 @@
 import { useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
 import AppLayout from "@/components/layout/AppLayout";
-import BuilderAssistant from "@/features/builder/components/BuilderAssistant";
+import BuilderSidebar from "@/features/builder/components/BuilderSidebar";
 import BuilderExplorer from "@/features/builder/components/BuilderExplorer";
 import BuilderHeader from "@/features/builder/components/BuilderHeader";
 import BuilderLayout from "@/features/builder/components/BuilderLayout";
 import CodeEditor from "@/features/builder/editor/CodeEditor";
 import { useBuilderStore } from "@/features/builder/store/builder.store";
+import { useWorkspaceStore } from "@/features/builder/store/workspace.store";
+import { deleteProject } from "@/features/builder/services/builder.service";
 
 const BuilderPage = () => {
   const { projectId } = useParams();
+  const navigate = useNavigate();
 
   const {
     currentProject,
     loading,
-    generating,
     error,
     loadProject,
-    generate,
+    loadRuntimeStatus,
+    generateProject,
+    startRuntime,
   } = useBuilderStore();
 
+  const {
+    setProject,
+    loadWorkspaceTree,
+  } = useWorkspaceStore();
+
   useEffect(() => {
+    if (!projectId) {
+      return;
+    }
+
+    setProject(projectId);
+
+    const init = async () => {
+      await loadProject(projectId);
+      
+      const { currentProject } = useBuilderStore.getState();
+      if (currentProject?.framework) {
+        await loadWorkspaceTree();
+      }
+    };
+
+    void init();
+    void loadRuntimeStatus(projectId);
+  }, [
+    projectId,
+    loadProject,
+    loadRuntimeStatus,
+    setProject,
+    loadWorkspaceTree,
+  ]);
+
+  const handleStartRuntime = async () => {
+    if (!projectId || !currentProject) {
+      return;
+    }
+
+    try {
+      if (!currentProject.framework) {
+        await generateProject(projectId);
+      }
+      await startRuntime(projectId);
+      await loadWorkspaceTree();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleDeleteProject = async () => {
     if (!projectId) return;
 
-    void loadProject(projectId);
-  }, [projectId, loadProject]);
-
-  const handleGenerate = async () => {
-    if (!projectId) return;
-
-    await generate(projectId);
+    try {
+      await deleteProject(projectId);
+      navigate("/dashboard");
+    } catch (err) {
+      console.error("Failed to delete project:", err);
+      alert("Failed to delete project");
+    }
   };
 
   if (loading) {
@@ -66,8 +117,7 @@ const BuilderPage = () => {
             <div className="flex h-full flex-col">
               <BuilderHeader
                 project={currentProject}
-                generating={generating}
-                onGenerate={handleGenerate}
+                onDelete={handleDeleteProject}
               />
 
               <div className="min-h-0 flex-1">
@@ -76,7 +126,11 @@ const BuilderPage = () => {
             </div>
           )
         }
-        right={<BuilderAssistant />}
+        right={
+          <BuilderSidebar 
+            onGenerate={handleStartRuntime} 
+          />
+        }
       />
     </AppLayout>
   );

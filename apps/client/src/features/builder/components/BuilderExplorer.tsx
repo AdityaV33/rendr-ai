@@ -1,7 +1,26 @@
 import FileTree from "@/features/builder/components/FileTree";
-import { mockFileTree } from "@/features/builder/data/mockFileTree";
+import { useWorkspaceStore } from "@/features/builder/store/workspace.store";
 
 const BuilderExplorer = () => {
+  const workspaceTree =
+    useWorkspaceStore(
+      (state) => state.workspaceTree,
+    );
+
+  const loadingWorkspace =
+    useWorkspaceStore(
+      (state) =>
+        state.loadingWorkspace,
+    );
+
+  if (loadingWorkspace) {
+    return (
+      <div className="flex h-full items-center justify-center text-sm text-neutral-500">
+        Loading workspace...
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-full flex-col">
       <div className="border-b border-neutral-800 px-4 py-3">
@@ -11,7 +30,9 @@ const BuilderExplorer = () => {
       </div>
 
       <div className="flex-1 overflow-y-auto p-2">
-        <FileTree nodes={mockFileTree} />
+        <FileTree
+          nodes={workspaceTree}
+        />
       </div>
     </div>
   );
