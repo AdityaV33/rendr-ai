@@ -11,22 +11,11 @@ const BuilderPreview = ({ onStartRuntime }: BuilderPreviewProps) => {
   const startingRuntime = useBuilderStore((state) => state.startingRuntime);
   const error = useBuilderStore((state) => state.error);
 
-  const currentProject = useBuilderStore((state) => state.currentProject);
-
   useEffect(() => {
-    console.log("========================================");
-    console.log("PREVIEW INSTRUMENTATION LOG");
-    console.log(`Project ID: ${currentProject?.id}`);
-    console.log(`Starting Runtime State: ${startingRuntime}`);
-    console.log(`Runtime Error: ${error}`);
-    console.log(`Runtime Status Object:`, runtime);
-    console.log(`Preview URL: ${runtime?.preview?.url}`);
-    
     if (!runtime && !startingRuntime && !error) {
-      console.log("-> TRIGGERING onStartRuntime()");
       onStartRuntime();
     }
-  }, [runtime, startingRuntime, error, onStartRuntime, currentProject?.id]);
+  }, [runtime, startingRuntime, error, onStartRuntime]);
 
   const isLoading =
     startingRuntime ||
@@ -36,8 +25,6 @@ const BuilderPreview = ({ onStartRuntime }: BuilderPreviewProps) => {
     runtime?.status === RuntimeStatus.GENERATING;
 
   const isFailed = runtime?.status === RuntimeStatus.FAILED || error;
-
-  console.log(`[Preview Render] iframe src will be: ${!isLoading && !isFailed && runtime?.preview?.url ? runtime.preview.url : "NOT RENDERED"}`);
 
   return (
     <div className="flex h-full flex-col bg-white">
@@ -54,7 +41,11 @@ const BuilderPreview = ({ onStartRuntime }: BuilderPreviewProps) => {
         <div className="flex flex-1 items-center justify-center bg-neutral-950 p-6 text-center text-red-500">
           <div>
             <p className="font-medium">Failed to load preview</p>
-            {error && <p className="mt-1 text-sm text-red-400 opacity-80">{error}</p>}
+            {error && (
+              <p className="mt-1 text-sm text-red-400 opacity-80">
+                {error}
+              </p>
+            )}
           </div>
         </div>
       )}
