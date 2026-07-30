@@ -50,7 +50,6 @@ export async function startRuntime(
   }
 
   if (workspaceCreated) {
-    console.log(`[Runtime Manager] Copying template for framework: ${project.framework}`);
     await templateService.copyTemplate(
       projectId,
       project.framework,
@@ -129,7 +128,7 @@ export async function startRuntime(
     );
 
     const preview =
-      startPreview(projectId, project.framework);
+      await startPreview(projectId);
 
     runtimeService.updateRuntime(
       projectId,

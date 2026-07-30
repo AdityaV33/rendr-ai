@@ -3,6 +3,7 @@ import {
   SpawnOptions,
   spawn,
   exec,
+  execSync,
 } from "node:child_process";
 import os from "node:os";
 
@@ -12,6 +13,13 @@ export interface ProcessResult {
   stdout: string;
   stderr: string;
 }
+
+/**
+ * Global registry of all managed child processes.
+ * Every process started via startProcess is tracked here
+ * so that it can be cleaned up on backend shutdown.
+ */
+const managedProcesses = new Set<ChildProcess>();
 
 export function runProcess(
   command: string,
@@ -63,7 +71,7 @@ export function startProcess(
   args: string[],
   options?: SpawnOptions,
 ): ChildProcess {
-  return spawn(
+  const child = spawn(
     command,
     args,
     {
@@ -71,6 +79,14 @@ export function startProcess(
       ...options,
     },
   );
+
+  managedProcesses.add(child);
+
+  child.on("exit", () => {
+    managedProcesses.delete(child);
+  });
+
+  return child;
 }
 
 export function stopProcess(
@@ -85,4 +101,51 @@ export function stopProcess(
       childProcess.kill();
     }
   }
+
+  managedProcesses.delete(childProcess);
 }
+
+/**
+ * Terminate every managed child process.
+ * Called during graceful shutdown to prevent orphaned preview servers.
+ */
+export function stopAllProcesses(): void {
+  for (const child of managedProcesses) {
+    if (!child.killed && child.pid) {
+      if (os.platform() === "win32") {
+        try {
+          execSync(
+            `taskkill /pid ${child.pid} /t /f`,
+            { stdio: "ignore" },
+          );
+        } catch {
+          // Process may have already exited
+        }
+      } else {
+        child.kill("SIGTERM");
+      }
+    }
+  }
+
+  managedProcesses.clear();
+}
+
+/**
+ * Register graceful shutdown handlers.
+ * Ensures all managed child processes are terminated
+ * before the backend exits.
+ */
+function registerShutdownHandlers(): void {
+  const shutdown = (signal: string) => {
+    console.log(
+      `\n[Process Manager] Received ${signal}, stopping all managed processes...`,
+    );
+    stopAllProcesses();
+    process.exit(0);
+  };
+
+  process.on("SIGINT", () => shutdown("SIGINT"));
+  process.on("SIGTERM", () => shutdown("SIGTERM"));
+}
+
+registerShutdownHandlers();
