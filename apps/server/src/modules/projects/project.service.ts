@@ -1,8 +1,7 @@
 import { ProjectModel } from "./project.model.js";
 import {
   CreateProjectInput, UpdateProjectInput,} from "./project.validation.js";
-import { planProject } from "../ai/index.js";
-import type { ProjectPlan } from "../ai/index.js";
+import { aiService } from "../ai/index.js";
 import { NotFoundError } from "../lib/http-error.js";
 import * as workspaceService from "../runtime/workspace.service.js";
 import * as runtimeManagerService from "../runtime/runtime-manager.service.js";
@@ -87,11 +86,8 @@ export async function generateProject(
     throw new NotFoundError("Project not found");
   }
 
-  const plan: ProjectPlan = await planProject(
-  project.prompt,
-);
+  const plan = await aiService.generate({ prompt: project.prompt });
 
-project.framework = plan.framework;
 project.aiPlan = plan;
 project.status = "planning";
 

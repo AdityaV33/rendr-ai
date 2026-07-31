@@ -1,5 +1,5 @@
 import { Schema, model, Types } from "mongoose";
-import type { ProjectPlan } from "../ai/index.js";
+import type { ProjectPlan } from "../ai/types/project-plan.types.js";
 
 export type ProjectStatus =
   | "draft"

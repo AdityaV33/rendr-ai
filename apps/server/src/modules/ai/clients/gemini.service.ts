@@ -6,7 +6,7 @@ export class GeminiService {
   private readonly client: GoogleGenAI;
 
   // Encapsulated Gemini configuration
-  private readonly model = "gemini-2.5-flash";
+  private readonly model = "gemini-2.0-flash";
   private readonly generationConfig = {
     temperature: 0.7,
     maxOutputTokens: 8192,
@@ -51,7 +51,12 @@ export class GeminiService {
   /**
    * Generates a structured JSON response mapped to type T based on the provided schema.
    */
-  async generateStructured<T>(prompt: string, responseSchema: object, systemInstruction?: string): Promise<T> {
+  async generateStructured<T>(
+    prompt: string,
+    responseSchema: object,
+    systemInstruction?: string,
+    config?: { temperature?: number },
+  ): Promise<T> {
     try {
       return await this.withRetry(async () => {
         const response = await this.withTimeout(
@@ -60,6 +65,7 @@ export class GeminiService {
             contents: prompt,
             config: {
               ...this.generationConfig,
+              ...config,
               systemInstruction,
               responseMimeType: "application/json",
               responseSchema,

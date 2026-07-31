@@ -1,4 +1,3 @@
-export interface ProjectPlan {
-  framework: "react-ts" | "vanilla";
-  reasoning: string;
-}
+// Legacy planner types removed.
+// ProjectPlan is now defined via z.infer in project-plan.types.ts
+export {};
