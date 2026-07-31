@@ -6,12 +6,12 @@ export class GeminiService {
   private readonly client: GoogleGenAI;
 
   // Encapsulated Gemini configuration
-  private readonly model = "gemini-2.0-flash";
+  private readonly model = env.GEMINI_MODEL;
   private readonly generationConfig = {
-    temperature: 0.7,
-    maxOutputTokens: 8192,
+    temperature: env.GEMINI_TEMPERATURE,
+    maxOutputTokens: env.GEMINI_MAX_OUTPUT_TOKENS,
   };
-  private readonly requestTimeoutMs = 60000;
+  private readonly requestTimeoutMs = env.GEMINI_TIMEOUT_MS;
 
   constructor() {
     this.client = new GoogleGenAI({

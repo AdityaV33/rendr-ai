@@ -25,6 +25,14 @@ const envSchema = z.object({
   REFRESH_TOKEN_EXPIRES_IN: z.string().min(1),
 
   GEMINI_API_KEY: z.string().min(1),
+
+  GEMINI_MODEL: z.string().default("models/gemini-flash-latest"),
+
+  GEMINI_TEMPERATURE: z.coerce.number().default(0.7),
+
+  GEMINI_MAX_OUTPUT_TOKENS: z.coerce.number().default(8192),
+
+  GEMINI_TIMEOUT_MS: z.coerce.number().default(60000),
 });
 
 export const env = envSchema.parse(process.env);

@@ -1,5 +1,3 @@
-import { zodToJsonSchema } from "zod-to-json-schema";
-
 /**
  * Converts a Zod schema to a Gemini API-compatible JSON Schema.
  *
@@ -7,13 +5,13 @@ import { zodToJsonSchema } from "zod-to-json-schema";
  * $schema, $ref, definitions, or additionalProperties fields.
  * This utility strips those properties recursively.
  *
- * Uses a type assertion for the Zod schema parameter because zod-to-json-schema
- * is typed against Zod v3 internals while this project uses Zod v4.
- * The runtime behavior is identical.
+ * Uses Zod v4's native toJSONSchema() method.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function zodToGeminiSchema(schema: any): object {
-  const jsonSchema = zodToJsonSchema(schema, { target: "openApi3" });
+  const jsonSchema = typeof schema.toJSONSchema === "function" 
+    ? schema.toJSONSchema() 
+    : {};
 
   return stripUnsupportedFields(jsonSchema as Record<string, unknown>);
 }
@@ -25,8 +23,7 @@ function stripUnsupportedFields(obj: Record<string, unknown>): Record<string, un
   const result: Record<string, unknown> = {};
 
   for (const [key, value] of Object.entries(obj)) {
-    // Skip fields unsupported by Gemini
-    if (key === "$schema" || key === "$ref" || key === "definitions" || key === "additionalProperties") {
+    if (key === "$schema" || key === "$ref" || key === "definitions" || key === "additionalProperties" || key === "propertyNames") {
       continue;
     }
 
