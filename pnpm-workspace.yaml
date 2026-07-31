@@ -2,5 +2,7 @@ packages:
   - "apps/*"
   - "packages/*"
 allowBuilds:
+  '@google/genai': true
   bcrypt: false
   esbuild: true
+  protobufjs: true
