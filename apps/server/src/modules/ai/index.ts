@@ -1,2 +1,2 @@
-export { planProject } from "./planner.service.js";
-export type { ProjectPlan } from "./planner.types.js";
+export { planProject } from "./planner/planner.service.js";
+export type { ProjectPlan } from "./types/planner.types.js";

@@ -1,5 +1,5 @@
 
-import type { ProjectPlan } from "./planner.types.js";
+import type { ProjectPlan } from "../types/planner.types.js";
 
 
 export async function planProject(
@@ -23,4 +23,10 @@ export async function planProject(
     reasoning:
       "A simple HTML, CSS and JavaScript application is sufficient for this project.",
   };
+}
+
+export class PlannerService {
+  async execute() {
+    throw new Error("Not implemented");
+  }
 }
