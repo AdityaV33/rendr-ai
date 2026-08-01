@@ -1,5 +1,7 @@
 import { GeminiService } from "./clients/gemini.service.js";
 import { PlannerService } from "./planner/planner.service.js";
+import { ArchitectService } from "./architect/architect.service.js";
+import type { ArchitecturePlan } from "./types/architecture-plan.types.js";
 import type { ProjectPlan } from "./types/project-plan.types.js";
 import { BadRequestError } from "../lib/http-error.js";
 
@@ -10,18 +12,23 @@ import { BadRequestError } from "../lib/http-error.js";
 export class AiService {
   private readonly gemini: GeminiService;
   private readonly planner: PlannerService;
+  private readonly architect: ArchitectService;
 
   constructor() {
     this.gemini = new GeminiService();
     this.planner = new PlannerService(this.gemini);
+    this.architect = new ArchitectService(this.gemini);
   }
 
-  async generate(data: { prompt?: string }): Promise<ProjectPlan> {
+  async generate(data: { prompt?: string }): Promise<{ projectPlan: ProjectPlan; architecturePlan: ArchitecturePlan }> {
     if (!data.prompt) {
       throw new BadRequestError("A prompt is required.");
     }
 
-    return this.planner.plan(data.prompt);
+    const projectPlan = await this.planner.plan(data.prompt);
+    const architecturePlan = await this.architect.architect(projectPlan);
+    
+    return { projectPlan, architecturePlan };
   }
 
   async refine(_data: unknown) {

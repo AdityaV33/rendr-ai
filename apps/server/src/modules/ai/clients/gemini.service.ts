@@ -89,14 +89,13 @@ export class GeminiService {
    * Will be reused by future planner, generator, and refiner services.
    */
   private parseStructuredResponse<T>(text: string): T {
-    try {
-      return JSON.parse(text) as T;
-    } catch (error) {
-      console.error("Failed to parse structured response from Gemini API");
-      throw new Error("Malformed JSON response from AI service.");
-    }
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    console.error("Failed to parse structured response from Gemini API");
+    throw new Error("Malformed JSON response from AI service.");
   }
-
+}
   /**
    * Centralized error handler to map SDK errors to application errors.
    */

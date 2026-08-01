@@ -25,4 +25,5 @@ Rules:
 - Every page must have a name, route, and description.
 - Every component must have a name and description.
 - Be thorough. Real applications need multiple pages and many reusable components.
-- Think about what a real user would expect from this type of application.`;
+- Think about what a real user would expect from this type of application.
+- Do NOT assume authentication is required by default. Only enable authentication if the prompt clearly implies user accounts, collaboration, cloud sync, private data, multi-user workspaces, role-based access, or organizations. Simple local apps (like a standard Todo app) do not need authentication.`;

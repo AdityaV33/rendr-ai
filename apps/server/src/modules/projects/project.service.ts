@@ -86,9 +86,10 @@ export async function generateProject(
     throw new NotFoundError("Project not found");
   }
 
-  const plan = await aiService.generate({ prompt: project.prompt });
+  const { projectPlan, architecturePlan } = await aiService.generate({ prompt: project.prompt });
 
-project.aiPlan = plan;
+  project.aiPlan = projectPlan;
+  project.architecturePlan = architecturePlan;
 project.status = "planning";
 
 await project.save();
