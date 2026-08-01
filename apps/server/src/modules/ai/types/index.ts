@@ -5,3 +5,4 @@ export * from "./workspace.types.js";
 export * from "./generation.types.js";
 export * from "./refinement.types.js";
 export * from "./validation.types.js";
+export * from "./generated-project.types.js";

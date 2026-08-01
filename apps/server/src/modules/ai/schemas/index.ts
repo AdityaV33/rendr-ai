@@ -5,3 +5,4 @@ export * from "./workspace-manifest.schema.js";
 export * from "./generation-result.schema.js";
 export * from "./refinement.schema.js";
 export * from "./validation.schema.js";
+export * from "./generated-project.schema.js";
