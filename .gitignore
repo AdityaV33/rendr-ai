@@ -11,4 +11,13 @@ dist/
 Thumbs.db
 
 # Generated runtime projects
-apps/server/runtime/workspaces/
+apps/server/runtime/
+
+# IDE / OS specific files
+.vscode/
+.idea/
+
+# Tooling caches & build artifacts
+*.tsbuildinfo
+.eslintcache
+.vite/
