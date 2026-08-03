@@ -26,7 +26,13 @@ const envSchema = z.object({
 
   GEMINI_API_KEY: z.string().min(1),
 
-  GEMINI_MODEL: z.string().default("models/gemini-flash-latest"),
+  GEMINI_MODELS: z
+    .string()
+    .default("models/gemini-3.6-flash,models/gemini-2.5-flash,models/gemini-2.0-flash,models/gemini-2.0-flash-lite,models/gemini-2.5-pro")
+    .transform((val) => val.split(",").map((s) => s.trim()).filter(Boolean))
+    .refine((arr) => arr.length > 0, {
+      message: "GEMINI_MODELS must contain at least one valid model.",
+    }),
 
   GEMINI_TEMPERATURE: z.coerce.number().default(0.7),
 

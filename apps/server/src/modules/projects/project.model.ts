@@ -1,6 +1,7 @@
 import { Schema, model, Types } from "mongoose";
 import type { ProjectPlan } from "../ai/types/project-plan.types.js";
 import type { ArchitecturePlan } from "../ai/types/architecture-plan.types.js";
+import type { GeneratedProject } from "../ai/types/generated-project.types.js";
 
 export type ProjectStatus =
   | "draft"
@@ -23,6 +24,7 @@ export interface Project {
   status: ProjectStatus;
   aiPlan: ProjectPlan | null;
   architecturePlan: ArchitecturePlan | null;
+  generatedProject: GeneratedProject | null;
   files: string[];
 
   createdAt: Date;
@@ -74,6 +76,11 @@ const projectSchema = new Schema<Project>(
     },
 
     architecturePlan: {
+      type: Schema.Types.Mixed,
+      default: null,
+    },
+
+    generatedProject: {
       type: Schema.Types.Mixed,
       default: null,
     },

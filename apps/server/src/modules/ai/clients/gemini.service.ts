@@ -6,7 +6,6 @@ export class GeminiService {
   private readonly client: GoogleGenAI;
 
   // Encapsulated Gemini configuration
-  private readonly model = env.GEMINI_MODEL;
   private readonly generationConfig = {
     temperature: env.GEMINI_TEMPERATURE,
     maxOutputTokens: env.GEMINI_MAX_OUTPUT_TOKENS,
@@ -25,10 +24,10 @@ export class GeminiService {
    */
   async generateText(prompt: string, systemInstruction?: string): Promise<string> {
     try {
-      return await this.withRetry(async () => {
+      return await this.withRetry(async (activeModel) => {
         const response = await this.withTimeout(
           this.client.models.generateContent({
-            model: this.model,
+            model: activeModel,
             contents: prompt,
             config: {
               ...this.generationConfig,
@@ -58,10 +57,10 @@ export class GeminiService {
     config?: { temperature?: number },
   ): Promise<T> {
     try {
-      return await this.withRetry(async () => {
+      return await this.withRetry(async (activeModel) => {
         const response = await this.withTimeout(
           this.client.models.generateContent({
-            model: this.model,
+            model: activeModel,
             contents: prompt,
             config: {
               ...this.generationConfig,
@@ -89,17 +88,38 @@ export class GeminiService {
    * Will be reused by future planner, generator, and refiner services.
    */
   private parseStructuredResponse<T>(text: string): T {
-  try {
-    return JSON.parse(text) as T;
-  } catch {
-    console.error("Failed to parse structured response from Gemini API");
-    throw new Error("Malformed JSON response from AI service.");
+    let cleaned = text.trim();
+
+    // 1. Remove markdown code fences if present (e.g., ```json ... ``` or ``` ...)
+    cleaned = cleaned.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
+
+    // 2. Extract substring between first { or [ and last } or ] to handle preamble/postscript text
+    const firstBrace = cleaned.search(/[{[]/);
+    const lastBrace = cleaned.search(/[}\]][^}\]]*$/);
+    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+      cleaned = cleaned.slice(firstBrace, lastBrace + 1).trim();
+    }
+
+    try {
+      return JSON.parse(cleaned) as T;
+    } catch {
+      console.error("Failed to parse structured response from Gemini API.");
+      console.error("--- RAW GEMINI RESPONSE START ---");
+      console.error(text);
+      console.error("--- RAW GEMINI RESPONSE END ---");
+      console.error("--- CLEANED TEXT START ---");
+      console.error(cleaned);
+      console.error("--- CLEANED TEXT END ---");
+      throw new Error("Malformed JSON response from AI service.");
+    }
   }
-}
   /**
    * Centralized error handler to map SDK errors to application errors.
    */
   private handleError(error: unknown): never {
+    if (error instanceof InternalServerError) {
+      throw error;
+    }
     // Only log safe debugging information, not the full error payload which might contain sensitive data
     if (error instanceof Error) {
       console.error(`Gemini API Error: ${error.message}`);
@@ -130,17 +150,25 @@ export class GeminiService {
   }
 
   /**
-   * Executes a given async function with an exponential backoff retry mechanism.
-   * Only retries transient failures.
+   * Executes a given async function routing through fallback models on availability errors.
    */
-  private async withRetry<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T> {
-    let attempt = 0;
-    while (attempt < maxRetries) {
-      try {
-        return await fn();
-      } catch (error: unknown) {
-        attempt++;
+  private async withRetry<T>(fn: (model: string) => Promise<T>): Promise<T> {
+    const models = env.GEMINI_MODELS;
+    const attemptedModels: string[] = [];
 
+    console.log(`[GeminiService] Starting request with primary model: ${models[0]}`);
+
+    for (let i = 0; i < models.length; i++) {
+      const currentModel = models[i];
+      attemptedModels.push(currentModel);
+
+      try {
+        const result = await fn(currentModel);
+        if (i > 0) {
+          console.log(`[GeminiService] Final successful fallback model: ${currentModel}`);
+        }
+        return result;
+      } catch (error: unknown) {
         // Determine if error is transient safely without using 'any'
         const isTimeout = error instanceof Error && error.message === "Request timed out";
         
@@ -150,21 +178,34 @@ export class GeminiService {
         const name = error instanceof Error ? error.name : typeof errObj?.name === "string" ? errObj.name : undefined;
 
         const isRateLimit = status === 429;
+        const isNotFound = status === 404;
         const isServerFailure = status !== undefined && status >= 500 && status < 600;
         const isNetworkFailure = code === "ECONNRESET" || code === "ETIMEDOUT" || name === "FetchError";
 
-        const isTransient = isTimeout || isRateLimit || isServerFailure || isNetworkFailure;
+        const isTransient = isTimeout || isRateLimit || isServerFailure || isNetworkFailure || isNotFound;
 
-        if (!isTransient || attempt >= maxRetries) {
-          throw error;
+        if (!isTransient) {
+          throw error; // Schema validation failure, malformed JSON, invalid prompt
         }
 
-        console.log(`Gemini API transient failure (attempt ${attempt}). Retrying...`);
-        const backoffTime = 1000 * Math.pow(2, attempt - 1);
-        await new Promise((resolve) => setTimeout(resolve, backoffTime));
+        let reason = "Unknown transient error";
+        if (isRateLimit) reason = "429 Quota Exceeded / Rate Limited";
+        else if (isNotFound) reason = "404 Model Unavailable / Deprecated";
+        else if (isServerFailure) reason = `${status} Server Error`;
+        else if (isTimeout) reason = "Request Timeout";
+        else if (isNetworkFailure) reason = "Network Failure";
+
+        if (i < models.length - 1) {
+          const nextModel = models[i + 1];
+          console.log(`[GeminiService] Request failed on ${currentModel}. Reason: ${reason}`);
+          console.log(`[GeminiService] Fallback switching to next priority model: ${nextModel}`);
+        } else {
+          console.log(`[GeminiService] Request failed on ${currentModel}. Reason: ${reason}`);
+        }
       }
     }
     
-    throw new Error("Max retries exceeded");
+    console.error(`[GeminiService] All fallback models exhausted. Models attempted: ${attemptedModels.join(", ")}`);
+    throw new InternalServerError("An error occurred while communicating with the AI service. All fallback models failed.");
   }
 }

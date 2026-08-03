@@ -86,15 +86,28 @@ export async function generateProject(
     throw new NotFoundError("Project not found");
   }
 
-  const { projectPlan, architecturePlan } = await aiService.generate({ prompt: project.prompt });
+  project.status = "generating";
+  await project.save();
 
-  project.aiPlan = projectPlan;
-  project.architecturePlan = architecturePlan;
-project.status = "planning";
+  try {
+    const { projectPlan, architecturePlan, generatedProject } = await aiService.generate({ prompt: project.prompt });
 
-await project.save();
+    project.aiPlan = projectPlan;
+    project.architecturePlan = architecturePlan;
+    project.generatedProject = generatedProject;
+    
+    // Convert GeneratedProject files[] to string[] for the Project.files schema
+    project.files = generatedProject.files.map(f => f.path);
+    project.status = "ready";
 
-return project;
+    await project.save();
+
+    return project;
+  } catch (error) {
+    project.status = "failed";
+    await project.save();
+    throw error;
+  }
 }
 export async function requireProject(
   owner: string,
