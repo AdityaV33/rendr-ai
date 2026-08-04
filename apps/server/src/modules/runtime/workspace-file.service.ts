@@ -81,3 +81,51 @@ export async function updateWorkspaceFile(
     content,
   );
 }
+
+export async function writeGeneratedProject(
+  projectId: string,
+  generatedFiles: { path: string; content: string }[],
+): Promise<void> {
+  const workspacePath = workspaceService.getWorkspacePath(projectId);
+
+  const allNodes = await filesystemService.listDirectory(workspacePath, workspacePath);
+  const templateFilePaths = new Set<string>();
+
+  const normalizePath = (p: string) => p.replace(/\\/g, "/");
+
+  const collectPaths = (nodes: filesystemService.WorkspaceFileNode[]) => {
+    for (const node of nodes) {
+      if (node.type === "file") {
+        templateFilePaths.add(normalizePath(node.path));
+      } else if (node.children) {
+        collectPaths(node.children);
+      }
+    }
+  };
+  collectPaths(allNodes);
+
+  const overwrittenFiles: string[] = [];
+  const generatedFilePaths = new Set(generatedFiles.map(f => normalizePath(f.path)));
+  const preservedFiles: string[] = [];
+
+  for (const file of generatedFiles) {
+    const resolved = resolveWorkspaceFilePath(workspacePath, file.path);
+    const normalized = normalizePath(file.path);
+    
+    if (templateFilePaths.has(normalized)) {
+      overwrittenFiles.push(file.path);
+    }
+
+    const dir = path.dirname(resolved);
+    await filesystemService.createDirectory(dir);
+    await filesystemService.writeFile(resolved, file.content);
+  }
+
+  for (const tPath of templateFilePaths) {
+    if (!generatedFilePaths.has(tPath)) {
+      preservedFiles.push(tPath);
+    }
+  }
+
+  console.log(`[Runtime] Workspace Synchronized: ${generatedFiles.length} generated, ${overwrittenFiles.length} overwritten, ${preservedFiles.length} preserved`);
+}

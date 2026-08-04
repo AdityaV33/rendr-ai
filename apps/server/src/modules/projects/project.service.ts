@@ -1,4 +1,4 @@
-import { ProjectModel } from "./project.model.js";
+import { ProjectModel, ProjectFramework } from "./project.model.js";
 import {
   CreateProjectInput, UpdateProjectInput,} from "./project.validation.js";
 import { aiService } from "../ai/index.js";
@@ -46,7 +46,7 @@ export async function updateProject(
     },
     data,
     {
-      new: true,
+      returnDocument: "after",
       runValidators: true,
     }
   );
@@ -72,10 +72,10 @@ export async function deleteProject(
 
   return project;
 }
+
 export async function generateProject(
   owner: string,
   projectId: string,
-  
 ) {
   const project = await ProjectModel.findOne({
     owner,
@@ -90,7 +90,14 @@ export async function generateProject(
   await project.save();
 
   try {
+    console.log("\n[Pipeline] Planner Started");
+    console.log("[Pipeline] Architecture Generation Started");
+    console.log("[Pipeline] Generator Started");
+
     const { projectPlan, architecturePlan, generatedProject } = await aiService.generate({ prompt: project.prompt });
+
+    console.log("[Pipeline] Generator Finished");
+    console.log("[Pipeline] Persisting to Database");
 
     project.aiPlan = projectPlan;
     project.architecturePlan = architecturePlan;
@@ -98,9 +105,16 @@ export async function generateProject(
     
     // Convert GeneratedProject files[] to string[] for the Project.files schema
     project.files = generatedProject.files.map(f => f.path);
+    project.framework = generatedProject.project.framework as ProjectFramework;
+
+    console.log(`[Pipeline] Resolved Framework: ${project.framework} | Language: ${generatedProject.project.language}`);
+
     project.status = "ready";
 
     await project.save();
+
+    console.log("[Pipeline] Project Saved");
+    console.log("[Pipeline] Runtime Starting");
 
     return project;
   } catch (error) {
@@ -135,7 +149,7 @@ export async function updateProjectStatus(
     projectId,
     { status },
     {
-      new: true,
+      returnDocument: "after",
       runValidators: true,
     },
   );

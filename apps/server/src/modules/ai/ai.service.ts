@@ -32,10 +32,22 @@ export class AiService {
       throw new BadRequestError("A prompt is required.");
     }
 
+    const startTotal = performance.now();
+
+    const startPlanner = performance.now();
     const projectPlan = await this.planner.plan(data.prompt);
+    console.log(`[Pipeline] Planner Finished (${(performance.now() - startPlanner).toFixed(0)}ms)`);
+
+    const startArchitect = performance.now();
     const architecturePlan = await this.architect.architect(projectPlan);
+    console.log(`[Pipeline] Architecture Finished (${(performance.now() - startArchitect).toFixed(0)}ms)`);
+
+    const startGenerator = performance.now();
     const generatedProject = await this.generator.generateProject(projectPlan, architecturePlan);
+    console.log(`[Pipeline] Generator Finished (${(performance.now() - startGenerator).toFixed(0)}ms)`);
     
+    console.log(`[Pipeline] AI Pipeline Total (${(performance.now() - startTotal).toFixed(0)}ms)`);
+
     return { projectPlan, architecturePlan, generatedProject };
   }
 

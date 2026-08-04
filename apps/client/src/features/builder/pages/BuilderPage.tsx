@@ -62,7 +62,7 @@ const BuilderPage = () => {
     }
 
     try {
-      if (!currentProject.framework) {
+      if (!currentProject.generatedProject) {
         await generateProject(projectId);
       }
       await startRuntime(projectId);

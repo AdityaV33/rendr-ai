@@ -23,6 +23,22 @@ class DashboardService {
     return response.data;
   }
 
+  async generateProject(
+    projectId: string,
+  ): Promise<Project> {
+    const response = await api.post<Project>(
+      `/projects/${projectId}/generate`,
+    );
+
+    return response.data;
+  }
+
+  async startRuntime(
+    projectId: string,
+  ): Promise<void> {
+    await api.post(`/runtime/${projectId}/start`);
+  }
+
   async getProject(
     projectId: string,
   ): Promise<Project> {

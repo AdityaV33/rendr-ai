@@ -16,7 +16,27 @@ export const app = express();
 
 app.use(
   cors({
-    origin: env.CLIENT_ORIGIN,
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) {
+        return callback(null, true);
+      }
+
+      // Always allow the explicitly configured client origin
+      if (origin === env.CLIENT_ORIGIN) {
+        return callback(null, true);
+      }
+
+      // In development, also allow dynamic localhost ports (e.g. Vite starting on 5174 instead of 5173)
+      if (env.NODE_ENV === "development") {
+        const isLocalhost = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+        if (isLocalhost) {
+          return callback(null, true);
+        }
+      }
+
+      callback(new Error("Not allowed by CORS"));
+    },
     credentials: true,
   }),
 );

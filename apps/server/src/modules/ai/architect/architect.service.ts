@@ -49,13 +49,13 @@ export class ArchitectService {
         lastError = error;
 
         if (attempt < MAX_VALIDATION_RETRIES) {
-          console.log("Architect schema validation failed. Retrying once...");
+          console.log("[Architect] Schema validation failed. Retrying...");
         }
       }
     }
 
     // If we exhausted schema validation retries, throw a clean application error
-    console.error("Architect failed to generate a valid schema after retries", lastError);
+    console.error("[Architect] Failed to generate valid schema after retries.", lastError);
     throw new InternalServerError("Failed to generate a valid architecture plan. Please try again.");
   }
 }

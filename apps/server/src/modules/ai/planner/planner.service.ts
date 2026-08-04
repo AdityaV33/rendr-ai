@@ -51,13 +51,13 @@ export class PlannerService {
         lastError = error;
 
         if (attempt < MAX_VALIDATION_RETRIES) {
-          console.log("Planner schema validation failed. Retrying once...");
+          console.log("[Planner] Schema validation failed. Retrying...");
         }
       }
     }
 
     // If we exhausted schema validation retries, throw a clean application error
-    console.error("Planner failed to generate a valid schema after retries", lastError);
+    console.error("[Planner] Failed to generate valid schema after retries.", lastError);
     throw new InternalServerError("Failed to generate a valid project plan. Please try again.");
   }
 }

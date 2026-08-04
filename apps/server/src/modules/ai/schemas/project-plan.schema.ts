@@ -59,8 +59,11 @@ export const projectPlanSchema = z.object({
   /** Whether the application should meet accessibility standards */
   accessible: z.boolean(),
 
+  /** Whether the application explicitly requested testing/unit tests */
+  requiresTests: z.boolean().describe("True ONLY if the user explicitly mentions testing, unit tests, Jest, Playwright, etc."),
+
   /** Overall complexity assessment */
-  complexity: z.enum(["simple", "moderate", "complex"]),
+  complexity: z.enum(["low", "medium"]),
 
   /** Optional additional metadata for extensibility */
   metadata: z.record(z.string(), z.unknown()).optional(),

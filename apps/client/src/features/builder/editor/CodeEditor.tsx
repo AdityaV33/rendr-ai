@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import Editor from "@monaco-editor/react";
 import type { OnMount } from "@monaco-editor/react";
 
@@ -59,14 +59,41 @@ import type { OnMount } from "@monaco-editor/react";
           state.updateOpenedFile,
       );
 
+    const saveFile =
+      useWorkspaceStore(
+        (state) => state.saveFile,
+      );
+
     const saveCurrentFile =
       useWorkspaceStore(
         (state) =>
           state.saveCurrentFile,
       );
 
+    const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
     const handleEditorMount: OnMount = useCallback(
       (editor, monaco) => {
+        
+        // Configure TypeScript for React/JSX
+        monaco.languages.typescript.typescriptDefaults.setCompilerOptions({
+          target: monaco.languages.typescript.ScriptTarget.ESNext,
+          allowNonTsExtensions: true,
+          moduleResolution: monaco.languages.typescript.ModuleResolutionKind.NodeJs,
+          module: monaco.languages.typescript.ModuleKind.CommonJS,
+          noEmit: true,
+          esModuleInterop: true,
+          jsx: monaco.languages.typescript.JsxEmit.React,
+          reactNamespace: "React",
+          allowJs: true,
+          typeRoots: ["node_modules/@types"]
+        });
+
+        monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions({
+          noSemanticValidation: false,
+          noSyntaxValidation: false,
+        });
+
         editor.addCommand(
           monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS,
           () => {
@@ -76,6 +103,14 @@ import type { OnMount } from "@monaco-editor/react";
       },
       [saveCurrentFile],
     );
+
+    useEffect(() => {
+      return () => {
+        if (saveTimeoutRef.current) {
+          clearTimeout(saveTimeoutRef.current);
+        }
+      };
+    }, []);
 
     if (!selectedFile) {
       return (
@@ -105,12 +140,20 @@ import type { OnMount } from "@monaco-editor/react";
           selectedFile,
         )}
         value={currentFile.content}
-        onChange={(value) =>
+        onChange={(value) => {
           updateOpenedFile(
             selectedFile,
             value ?? "",
-          )
-        }
+          );
+          
+          if (saveTimeoutRef.current) {
+            clearTimeout(saveTimeoutRef.current);
+          }
+          
+          saveTimeoutRef.current = setTimeout(() => {
+            void saveFile(selectedFile);
+          }, 300);
+        }}
         onMount={handleEditorMount}
         options={{
           readOnly: false,

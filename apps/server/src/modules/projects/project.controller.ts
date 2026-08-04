@@ -8,6 +8,8 @@ export async function createProject(
   req: Request,
   res: Response,
 ) {
+  console.log("[API] Received Create Project Request");
+
   const project = await projectService.createProject(
     req.user.id,
     req.body,

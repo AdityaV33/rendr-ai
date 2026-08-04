@@ -11,6 +11,7 @@ import {
 
 export async function buildProject(
   projectId: string,
+  command: string = "pnpm build",
 ): Promise<ProcessResult> {
   if (!(await workspaceExists(projectId))) {
     throw new BadRequestError(
@@ -21,9 +22,13 @@ export async function buildProject(
   const workspacePath =
     getWorkspacePath(projectId);
 
+  const [cmd, ...args] = command.split(" ");
+
+  console.log(`\nBuilding Project\n\nExecuting:\n${command}\n`);
+
   return runProcess(
-    "npm",
-    ["run", "build"],
+    cmd,
+    args,
     {
       cwd: workspacePath,
     },

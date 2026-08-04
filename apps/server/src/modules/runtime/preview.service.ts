@@ -121,6 +121,8 @@ function waitForServer(
 
 export async function startPreview(
   projectId: string,
+  devCommand: string = "npm run dev",
+  onExit?: (code: number | null, port: number) => void
 ): Promise<PreviewResult> {
   if (!(await workspaceExists(projectId))) {
     throw new BadRequestError(
@@ -136,28 +138,39 @@ export async function startPreview(
   let child: ChildProcess | undefined;
 
   try {
+    const cmdParts = devCommand.split(" ");
+    const cmd = cmdParts[0];
+    const args = cmdParts.slice(1);
+    
+    // Add vite arguments if it's a vite project (this will be safely ignored by non-vite projects if we pass them appropriately, or we can just append them)
+    args.push("--host", "0.0.0.0", "--port", String(port), "--strictPort");
+
     child = startProcess(
-      "npm",
-      [
-        "run",
-        "dev",
-        "--",
-        "--host",
-        "0.0.0.0",
-        "--port",
-        String(port),
-        "--strictPort",
-      ],
+      cmd,
+      args,
       {
         cwd: workspacePath,
       },
     );
+
+    child.stdout?.on('data', (data) => console.log(`[Preview stdout]: ${data.toString()}`));
+    child.stderr?.on('data', (data) => console.error(`[Preview stderr]: ${data.toString()}`));
+
+
 
     await waitForServer(
       url,
       child,
       PREVIEW_STARTUP_TIMEOUT_MS,
     );
+
+    // Monitor for unexpected exits after startup
+    child.on('exit', (code) => {
+      console.log(`[Preview] Process for ${projectId} exited with code ${code}`);
+      if (onExit) {
+        onExit(code, port);
+      }
+    });
 
     return {
       port,

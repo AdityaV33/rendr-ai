@@ -74,6 +74,31 @@ export const architecturePlanSchema = z.object({
     nodeVersion: z.string().optional().describe("e.g., '>= 18.0.0'"),
   }).optional(),
 
+  /** The single source of truth for component APIs. Must be generated for EVERY component in the file structure (excluding root/pages). */
+  componentContracts: z.array(
+    z.object({
+      name: z.string().describe("The exact name of the component, e.g. 'MessageCard'"),
+      description: z.string().describe("One-sentence description to disambiguate similarly named components. NO implementation details."),
+      exportType: z.enum(["default", "named"]),
+      props: z.array(
+        z.object({
+          name: z.string(),
+          type: z.enum([
+            "string",
+            "number",
+            "boolean",
+            "() => void",
+            "ReactNode",
+            "string[]",
+            "number[]",
+            "boolean[]"
+          ]).describe("Strictly constrained type to prevent API hallucination."),
+          required: z.boolean(),
+        })
+      ),
+    })
+  ).describe("Required array containing the API contract for EVERY component you create."),
+
   /** Extensibility for future phases */
   metadata: z.record(z.string(), z.unknown()).optional(),
 });

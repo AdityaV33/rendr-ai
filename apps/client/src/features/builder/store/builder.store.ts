@@ -81,10 +81,19 @@ export const useBuilderStore = create<BuilderStore>((set, get) => ({
   loadRuntimeStatus: async (projectId) => {
     try {
       const runtime = await getRuntimeStatusRequest(projectId);
+      
+      const currentId = get().currentProject?.id;
+      if (currentId && currentId !== projectId) {
+        return; // Ignore stale request if user navigated away
+      }
+      
       set({ runtime });
     } catch (error) {
       console.error("Failed to load runtime status:", error);
-      set({ runtime: null });
+      const currentId = get().currentProject?.id;
+      if (!currentId || currentId === projectId) {
+        set({ runtime: null });
+      }
     }
   },
 

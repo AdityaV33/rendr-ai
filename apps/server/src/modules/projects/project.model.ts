@@ -12,8 +12,7 @@ export type ProjectStatus =
   | "failed";
 
 export type ProjectFramework =
-  | "react-ts"
-  | "react-js"
+  | "react-vite"
   | "vanilla";
 
 export interface Project {
@@ -53,7 +52,7 @@ const projectSchema = new Schema<Project>(
 
     framework: {
       type: String,
-      enum: ["react-ts", "react-js", "vanilla"],
+      enum: ["react-vite", "vanilla"],
       default: null,
     },
 

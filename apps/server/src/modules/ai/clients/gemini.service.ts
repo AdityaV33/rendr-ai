@@ -36,6 +36,10 @@ export class GeminiService {
           })
         );
 
+        if (response.candidates?.[0]?.finishReason === "MAX_TOKENS") {
+          throw new Error("MAX_TOKENS_EXCEEDED");
+        }
+
         if (!response.text) {
           throw new Error("Empty response from Gemini API");
         }
@@ -72,6 +76,11 @@ export class GeminiService {
           })
         );
 
+        if (response.candidates?.[0]?.finishReason === "MAX_TOKENS") {
+          console.warn("[GeminiService] Response truncated: MAX_TOKENS reached.");
+          throw new Error("MAX_TOKENS_EXCEEDED");
+        }
+
         if (!response.text) {
           throw new Error("Empty response from Gemini API");
         }
@@ -103,13 +112,7 @@ export class GeminiService {
     try {
       return JSON.parse(cleaned) as T;
     } catch {
-      console.error("Failed to parse structured response from Gemini API.");
-      console.error("--- RAW GEMINI RESPONSE START ---");
-      console.error(text);
-      console.error("--- RAW GEMINI RESPONSE END ---");
-      console.error("--- CLEANED TEXT START ---");
-      console.error(cleaned);
-      console.error("--- CLEANED TEXT END ---");
+      console.error("[GeminiService] Failed to parse structured JSON response.");
       throw new Error("Malformed JSON response from AI service.");
     }
   }
@@ -120,6 +123,11 @@ export class GeminiService {
     if (error instanceof InternalServerError) {
       throw error;
     }
+
+    if (error instanceof Error && error.message === "MAX_TOKENS_EXCEEDED") {
+      throw error; // Allow this specific domain error to propagate
+    }
+
     // Only log safe debugging information, not the full error payload which might contain sensitive data
     if (error instanceof Error) {
       console.error(`Gemini API Error: ${error.message}`);

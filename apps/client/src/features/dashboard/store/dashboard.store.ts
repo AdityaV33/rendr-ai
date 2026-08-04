@@ -64,7 +64,7 @@ export const useDashboardStore =
       });
 
       try {
-        const project =
+        let project =
           await dashboardService.createProject(
             data,
           );
@@ -74,6 +74,20 @@ export const useDashboardStore =
             project,
             ...get().projects,
           ],
+        });
+
+        // Trigger generation
+        project = await dashboardService.generateProject(project.id);
+        
+        // Update project state with generation status
+        set({
+          projects: get().projects.map(p => p.id === project.id ? project : p),
+        });
+
+        // Trigger runtime
+        await dashboardService.startRuntime(project.id);
+
+        set({
           loading: false,
         });
       } catch (error) {

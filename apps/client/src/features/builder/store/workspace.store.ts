@@ -255,6 +255,7 @@ export const useWorkspaceStore =
         }
 
         try {
+          console.log(`[Runtime] Client saving file: ${filePath}`);
           set({
             savingFile: true,
             saveError: null,
@@ -266,6 +267,8 @@ export const useWorkspaceStore =
             filePath,
             file.content,
           );
+          
+          console.log(`[Runtime] Client successfully saved file: ${filePath}`);
 
           set((state) => ({
             savingFile: false,
