@@ -100,17 +100,42 @@ export async function updateWorkspaceFile(
     });
   }
 
+  console.log(`\n[Runtime] Received file update: ${filePath}`);
+
+
   // Validate project ownership
-  await projectService.requireProject(
+  const project = await projectService.requireProject(
     req.user.id,
     projectId,
   );
 
+  // Update physical workspace file
   await workspaceFileService.updateWorkspaceFile(
     projectId,
     filePath,
     content,
   );
+
+  const diskContent = await workspaceFileService.getWorkspaceFile(projectId, filePath);
+  if (diskContent !== content) {
+    console.error(`[Runtime Error] Workspace file on disk DOES NOT match expected content!`);
+  }
+
+  // Sync to database
+  if (project.generatedProject) {
+    const normalizedFilePath = filePath.replace(/\\/g, "/");
+    const fileIndex = project.generatedProject.files.findIndex(
+      f => f.path.replace(/\\/g, "/") === normalizedFilePath
+    );
+    if (fileIndex >= 0) {
+      project.generatedProject.files[fileIndex].content = content;
+      project.markModified("generatedProject");
+      await project.save();
+      console.log(`[Runtime] Workspace file updated and persisted: ${normalizedFilePath}`);
+    } else {
+      console.log(`[Runtime] Workspace file updated: ${normalizedFilePath} (Template file)`);
+    }
+  }
 
   return res.status(200).json({
     message:

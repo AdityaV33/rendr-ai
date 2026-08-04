@@ -6,6 +6,8 @@ export interface Project {
   framework: string;
   status: string;
   aiPlan: unknown;
+  architecturePlan: unknown | null;
+  generatedProject: unknown | null;
   files: unknown[];
   createdAt: string;
   updatedAt: string;

@@ -8,8 +8,7 @@ import * as filesystemService from "./filesystem.service.js";
 import * as workspaceService from "./workspace.service.js";
 
 const TEMPLATE_REGISTRY: Record<string, string> = {
-  "react-ts": "react",
-  "react-js": "react",
+  "react-vite": "react",
   "vanilla": "vanilla",
 };
 

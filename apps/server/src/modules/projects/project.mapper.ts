@@ -13,6 +13,8 @@ export interface ProjectResponse {
   files: Project["files"];
   createdAt: Project["createdAt"];
   updatedAt: Project["updatedAt"];
+  generatedProject?: Project["generatedProject"];
+  architecturePlan?: Project["architecturePlan"];
 }
 
 export function toProjectResponse(
@@ -29,5 +31,7 @@ export function toProjectResponse(
     files: project.files,
     createdAt: project.createdAt,
     updatedAt: project.updatedAt,
+    generatedProject: project.generatedProject,
+    architecturePlan: project.architecturePlan,
   };
 }

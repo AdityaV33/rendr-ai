@@ -1,5 +1,7 @@
 import { Schema, model, Types } from "mongoose";
-import type { ProjectPlan } from "../ai/index.js";
+import type { ProjectPlan } from "../ai/types/project-plan.types.js";
+import type { ArchitecturePlan } from "../ai/types/architecture-plan.types.js";
+import type { GeneratedProject } from "../ai/types/generated-project.types.js";
 
 export type ProjectStatus =
   | "draft"
@@ -10,8 +12,7 @@ export type ProjectStatus =
   | "failed";
 
 export type ProjectFramework =
-  | "react-ts"
-  | "react-js"
+  | "react-vite"
   | "vanilla";
 
 export interface Project {
@@ -21,6 +22,8 @@ export interface Project {
   framework: ProjectFramework | null;
   status: ProjectStatus;
   aiPlan: ProjectPlan | null;
+  architecturePlan: ArchitecturePlan | null;
+  generatedProject: GeneratedProject | null;
   files: string[];
 
   createdAt: Date;
@@ -49,7 +52,7 @@ const projectSchema = new Schema<Project>(
 
     framework: {
       type: String,
-      enum: ["react-ts", "react-js", "vanilla"],
+      enum: ["react-vite", "vanilla"],
       default: null,
     },
 
@@ -67,6 +70,16 @@ const projectSchema = new Schema<Project>(
     },
 
     aiPlan: {
+      type: Schema.Types.Mixed,
+      default: null,
+    },
+
+    architecturePlan: {
+      type: Schema.Types.Mixed,
+      default: null,
+    },
+
+    generatedProject: {
       type: Schema.Types.Mixed,
       default: null,
     },

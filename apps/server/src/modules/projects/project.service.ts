@@ -1,8 +1,7 @@
-import { ProjectModel } from "./project.model.js";
+import { ProjectModel, ProjectFramework } from "./project.model.js";
 import {
   CreateProjectInput, UpdateProjectInput,} from "./project.validation.js";
-import { planProject } from "../ai/index.js";
-import type { ProjectPlan } from "../ai/index.js";
+import { aiService } from "../ai/index.js";
 import { NotFoundError } from "../lib/http-error.js";
 import * as workspaceService from "../runtime/workspace.service.js";
 import * as runtimeManagerService from "../runtime/runtime-manager.service.js";
@@ -47,7 +46,7 @@ export async function updateProject(
     },
     data,
     {
-      new: true,
+      returnDocument: "after",
       runValidators: true,
     }
   );
@@ -73,10 +72,10 @@ export async function deleteProject(
 
   return project;
 }
+
 export async function generateProject(
   owner: string,
   projectId: string,
-  
 ) {
   const project = await ProjectModel.findOne({
     owner,
@@ -87,17 +86,42 @@ export async function generateProject(
     throw new NotFoundError("Project not found");
   }
 
-  const plan: ProjectPlan = await planProject(
-  project.prompt,
-);
+  project.status = "generating";
+  await project.save();
 
-project.framework = plan.framework;
-project.aiPlan = plan;
-project.status = "planning";
+  try {
+    console.log("\n[Pipeline] Planner Started");
+    console.log("[Pipeline] Architecture Generation Started");
+    console.log("[Pipeline] Generator Started");
 
-await project.save();
+    const { projectPlan, architecturePlan, generatedProject } = await aiService.generate({ prompt: project.prompt });
 
-return project;
+    console.log("[Pipeline] Generator Finished");
+    console.log("[Pipeline] Persisting to Database");
+
+    project.aiPlan = projectPlan;
+    project.architecturePlan = architecturePlan;
+    project.generatedProject = generatedProject;
+    
+    // Convert GeneratedProject files[] to string[] for the Project.files schema
+    project.files = generatedProject.files.map(f => f.path);
+    project.framework = generatedProject.project.framework as ProjectFramework;
+
+    console.log(`[Pipeline] Resolved Framework: ${project.framework} | Language: ${generatedProject.project.language}`);
+
+    project.status = "ready";
+
+    await project.save();
+
+    console.log("[Pipeline] Project Saved");
+    console.log("[Pipeline] Runtime Starting");
+
+    return project;
+  } catch (error) {
+    project.status = "failed";
+    await project.save();
+    throw error;
+  }
 }
 export async function requireProject(
   owner: string,
@@ -125,7 +149,7 @@ export async function updateProjectStatus(
     projectId,
     { status },
     {
-      new: true,
+      returnDocument: "after",
       runValidators: true,
     },
   );

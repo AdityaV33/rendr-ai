@@ -31,6 +31,7 @@ const stopRuntime = async (projectId: string) => {
 const getRuntimeStatus = async (projectId: string) => {
   const response = await api.get(
     `/runtime/${projectId}/status`,
+    { params: { t: Date.now() } }
   );
 
   return response.data;
@@ -41,6 +42,7 @@ const getWorkspaceTree = async (
 ) => {
   const response = await api.get(
     `/runtime/${projectId}/files`,
+    { params: { t: Date.now() } }
   );
 
   return response.data;
