@@ -15,12 +15,12 @@ export class GeminiProvider implements AIProvider {
   id = "gemini";
   name = "Google Gemini";
 
-  async generateText(prompt: string): Promise<string> {
+  async generateText(_prompt: string): Promise<string> {
     // TODO: Connect to existing Gemini instance or wrapper
     throw new Error("Not implemented in foundation block");
   }
 
-  async generateStructured<T>(prompt: string, schema: unknown): Promise<T> {
+  async generateStructured<T>(_prompt: string, _schema: unknown): Promise<T> {
     // TODO: Connect to existing Gemini instance or wrapper
     throw new Error("Not implemented in foundation block");
   }

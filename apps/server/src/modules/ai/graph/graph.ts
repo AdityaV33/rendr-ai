@@ -1,19 +1,29 @@
 import type { GenerationState } from "./state.js";
 
+import type { PlannerNode } from "./nodes/planner.node.js";
+import type { ArchitectNode } from "./nodes/architect.node.js";
+import type { GeneratorNode } from "./nodes/generator.node.js";
+import type { ValidatorNode } from "./nodes/validator.node.js";
+
 /**
  * LangGraph Orchestration Foundation
- * 
- * TODO: Future blocks will implement the actual graph connections and nodes.
- * DO NOT import Planner, Generator, or Runtime here yet.
  */
 export class GenerationGraph {
-  
+  constructor(
+    private readonly plannerNode: PlannerNode,
+    private readonly architectNode: ArchitectNode,
+    private readonly generatorNode: GeneratorNode,
+    private readonly validatorNode: ValidatorNode
+  ) {}
+
   public async execute(state: GenerationState): Promise<GenerationState> {
-    // Skeleton implementation
-    throw new Error("Graph execution is not implemented in this foundation block.");
+    let currentState = state;
+
+    currentState = await this.plannerNode.execute(currentState);
+    currentState = await this.architectNode.execute(currentState);
+    currentState = await this.generatorNode.execute(currentState);
+    currentState = await this.validatorNode.execute(currentState);
+
+    return currentState;
   }
-  
-  // TODO: Add methods for graph construction
-  // TODO: Add node definitions
-  // TODO: Add conditional edges
 }

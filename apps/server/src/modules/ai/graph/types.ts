@@ -1,14 +1,15 @@
-import type { ProjectPlan } from "../types/project-plan.types.js";
-import type { ArchitecturePlan } from "../types/architecture-plan.types.js";
-import type { GeneratedProject } from "../types/generated-project.types.js";
-import type { GeneratedFile } from "../types/generated-file.types.js";
+// Imports removed as requested
 
 export interface GenerationProject {
-  id: string;
-  framework: string;
+  readonly id: string;
+  readonly framework: string;
 }
-export interface WorkspaceState {}
-export interface ValidationState {}
+export interface WorkspaceState {
+  readonly workspaceId?: string;
+}
+export interface ValidationState {
+  readonly valid: boolean;
+}
 
 export type GraphStatus = "idle" | "running" | "paused" | "completed" | "failed";
 
