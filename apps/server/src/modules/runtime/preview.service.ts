@@ -133,7 +133,7 @@ export async function startPreview(
   const workspacePath =
     getWorkspacePath(projectId);
   const port = await getAvailablePort();
-  const url = `http://127.0.0.1:${port}`;
+  const url = `http://localhost:${port}`;
 
   let child: ChildProcess | undefined;
 

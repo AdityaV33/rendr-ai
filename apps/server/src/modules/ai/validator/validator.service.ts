@@ -1,5 +1,6 @@
 export class ValidatorService {
   async execute() {
-    throw new Error("Not implemented");
+    // Placeholder - no-op until validation is implemented in a future block
+    return;
   }
 }

@@ -1,12 +1,11 @@
 import { GeminiService } from "./clients/gemini.service.js";
-import { PlannerService } from "./planner/planner.service.js";
-import { ArchitectService } from "./architect/architect.service.js";
 import type { ArchitecturePlan } from "./types/architecture-plan.types.js";
 import type { ProjectPlan } from "./types/project-plan.types.js";
 import type { GeneratedProject } from "./types/generated-project.types.js";
-import { GeneratorService } from "./generator/generator.service.js";
-import { TemplateEngine } from "./template/template.engine.js";
-import { BadRequestError } from "../lib/http-error.js";
+import { BadRequestError, InternalServerError } from "../lib/http-error.js";
+import { createGenerationGraph } from "./graph/factory.js";
+import type { GenerationGraph } from "./graph/graph.js";
+import type { GenerationState } from "./graph/state.js";
 
 /**
  * AiService is the top-level orchestrator for all AI operations.
@@ -14,17 +13,11 @@ import { BadRequestError } from "../lib/http-error.js";
  */
 export class AiService {
   private readonly gemini: GeminiService;
-  private readonly planner: PlannerService;
-  private readonly architect: ArchitectService;
-  private readonly templateEngine: TemplateEngine;
-  private readonly generator: GeneratorService;
+  private readonly graph: GenerationGraph;
 
   constructor() {
     this.gemini = new GeminiService();
-    this.planner = new PlannerService(this.gemini);
-    this.architect = new ArchitectService(this.gemini);
-    this.templateEngine = new TemplateEngine();
-    this.generator = new GeneratorService(this.gemini, this.templateEngine);
+    this.graph = createGenerationGraph(this.gemini);
   }
 
   async generate(data: { prompt?: string }): Promise<{ projectPlan: ProjectPlan; architecturePlan: ArchitecturePlan; generatedProject: GeneratedProject }> {
@@ -32,23 +25,41 @@ export class AiService {
       throw new BadRequestError("A prompt is required.");
     }
 
-    const startTotal = performance.now();
 
-    const startPlanner = performance.now();
-    const projectPlan = await this.planner.plan(data.prompt);
-    console.log(`[Pipeline] Planner Finished (${(performance.now() - startPlanner).toFixed(0)}ms)`);
+    const initialState: GenerationState = {
+      prompt: data.prompt,
+      project: {
+        id: "",
+        framework: "",
+      },
+      repairAttempts: 0,
+      currentStep: "planner",
+      status: "idle",
+      errors: [],
+      executionHistory: [],
+      checkpoints: []
+    };
 
-    const startArchitect = performance.now();
-    const architecturePlan = await this.architect.architect(projectPlan);
-    console.log(`[Pipeline] Architecture Finished (${(performance.now() - startArchitect).toFixed(0)}ms)`);
+    const finalState = await this.graph.execute(initialState, (event) => {
+      if (event.type.endsWith("_started")) {
+        const node = event.type.split("_")[0];
+        console.log(`[Pipeline] ${node.charAt(0).toUpperCase() + node.slice(1)} Started`);
+      } else if (event.type.endsWith("_completed")) {
+        const node = event.type.split("_")[0];
+        const duration = event.durationMs ? `(${event.durationMs.toFixed(0)}ms)` : "";
+        console.log(`[Pipeline] ${node.charAt(0).toUpperCase() + node.slice(1)} Finished ${duration}`);
+      }
+    });
 
-    const startGenerator = performance.now();
-    const generatedProject = await this.generator.generateProject(projectPlan, architecturePlan);
-    console.log(`[Pipeline] Generator Finished (${(performance.now() - startGenerator).toFixed(0)}ms)`);
-    
-    console.log(`[Pipeline] AI Pipeline Total (${(performance.now() - startTotal).toFixed(0)}ms)`);
+    if (!finalState.plan || !finalState.architecture || !finalState.generatedFiles) {
+      throw new InternalServerError("Pipeline execution failed to generate required artifacts.");
+    }
 
-    return { projectPlan, architecturePlan, generatedProject };
+    return { 
+      projectPlan: finalState.plan, 
+      architecturePlan: finalState.architecture, 
+      generatedProject: finalState.generatedFiles 
+    };
   }
 
   async refine(_data: unknown) {

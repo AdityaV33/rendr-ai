@@ -1,0 +1,331 @@
+{
+  "id": "6a730b06447f832eca076a4e",
+  "prompt": "Build a modern Todo application.\n\nRequirements:\n\nCore Features:\n- Add new todos\n- Edit existing todos\n- Delete todos\n- Mark todos as completed\n- Unmark completed todos\n- Clear all completed todos\n\nFiltering:\n- All\n- Active\n- Completed\n\nPersistence:\n- Persist todos using localStorage\n- Restore todos automatically on page refresh\n\nUI:\n- Modern dark theme\n- Responsive design\n- Rounded cards\n- Smooth animations\n- Empty state when there are no todos\n- Display total tasks, active tasks and completed tasks\n\nTechnical Requirements:\n- React + TypeScript\n- Functional components\n- React hooks\n- Proper component composition\n- No external state management library\n- Clean folder structure\n- Reusable components\n- No placeholder code",
+  "aiPlan": {
+    "applicationType": "Todo Application",
+    "purpose": "A modern, responsive task management tool that allows users to track, organize, and filter their daily tasks with persistent local storage.",
+    "targetAudience": "Productivity-focused individuals looking for a simple, clean task tracker.",
+    "features": [
+      "Add, edit, and delete tasks",
+      "Toggle task completion status",
+      "Filter tasks by All, Active, and Completed status",
+      "Clear all completed tasks",
+      "Persistent storage via browser localStorage",
+      "Task statistics dashboard",
+      "Empty state handling"
+    ],
+    "pages": [
+      {
+        "name": "Task Manager",
+        "route": "/tasks",
+        "description": "The main dashboard where users manage their task list, view statistics, and apply filters."
+      }
+    ],
+    "components": [
+      {
+        "name": "TodoInput",
+        "description": "An input field for creating new tasks with an add button."
+      },
+      {
+        "name": "TodoItem",
+        "description": "A single task row displaying the task text, completion toggle, edit trigger, and delete button."
+      },
+      {
+        "name": "FilterBar",
+        "description": "A navigation component to switch between All, Active, and Completed views."
+      },
+      {
+        "name": "StatsSummary",
+        "description": "A display component showing the count of total, active, and completed tasks."
+      },
+      {
+        "name": "EmptyState",
+        "description": "A visual indicator shown when the task list is empty."
+      }
+    ],
+    "theme": {
+      "style": "Modern Dark Mode",
+      "primaryColor": "#6366f1",
+      "secondaryColor": "#1f2937",
+      "fontFamily": "Inter, sans-serif"
+    },
+    "requiresAuth": false,
+    "responsive": true,
+    "accessible": true,
+    "requiresTests": false,
+    "complexity": "low"
+  },
+  "architecturePlan": {
+    "stack": {
+      "language": "TypeScript",
+      "frontendFramework": "React",
+      "buildTool": "Vite",
+      "packageManager": "pnpm"
+    },
+    "strategies": {
+      "styling": "Tailwind CSS",
+      "routing": "None",
+      "stateManagement": "React Context",
+      "authentication": "None",
+      "designSystem": "Custom"
+    },
+    "tooling": {
+      "linting": "ESLint",
+      "formatting": "Prettier",
+      "testing": "None"
+    },
+    "environmentVariables": [],
+    "dependencies": [
+      {
+        "name": "lucide-react",
+        "version": "latest",
+        "isDev": false,
+        "reason": "Icon library for UI elements"
+      },
+      {
+        "name": "clsx",
+        "version": "latest",
+        "isDev": false,
+        "reason": "Utility for conditional class names"
+      },
+      {
+        "name": "tailwind-merge",
+        "version": "latest",
+        "isDev": false,
+        "reason": "Utility for merging tailwind classes"
+      }
+    ],
+    "fileStructure": [
+      {
+        "path": "src/components",
+        "purpose": "Directory for reusable UI components",
+        "type": "directory"
+      },
+      {
+        "path": "src/context",
+        "purpose": "Directory for React Context providers",
+        "type": "directory"
+      },
+      {
+        "path": "src/hooks",
+        "purpose": "Directory for custom hooks",
+        "type": "directory"
+      },
+      {
+        "path": "src/types",
+        "purpose": "Directory for shared TypeScript interfaces",
+        "type": "directory"
+      },
+      {
+        "path": "src/components/TodoInput.tsx",
+        "purpose": "Input component for adding new tasks",
+        "type": "file"
+      },
+      {
+        "path": "src/components/TodoItem.tsx",
+        "purpose": "Individual task row component",
+        "type": "file"
+      },
+      {
+        "path": "src/components/FilterBar.tsx",
+        "purpose": "Filter navigation component",
+        "type": "file"
+      },
+      {
+        "path": "src/components/StatsSummary.tsx",
+        "purpose": "Task statistics display component",
+        "type": "file"
+      },
+      {
+        "path": "src/components/EmptyState.tsx",
+        "purpose": "Empty state visual component",
+        "type": "file"
+      },
+      {
+        "path": "src/context/TodoContext.tsx",
+        "purpose": "Global state management for tasks and persistence",
+        "type": "file"
+      },
+      {
+        "path": "src/hooks/useLocalStorage.ts",
+        "purpose": "Hook for syncing state with browser storage",
+        "type": "file"
+      }
+    ],
+    "buildConfiguration": {
+      "outputDirectory": "dist"
+    },
+    "componentContracts": [
+      {
+        "name": "TodoInput",
+        "description": "Input field for creating new tasks",
+        "exportType": "named",
+        "props": [
+          {
+            "name": "onAdd",
+            "type": "() => void",
+            "required": true
+          }
+        ]
+      },
+      {
+        "name": "TodoItem",
+        "description": "Single task row with actions",
+        "exportType": "named",
+        "props": [
+          {
+            "name": "id",
+            "type": "string",
+            "required": true
+          },
+          {
+            "name": "text",
+            "type": "string",
+            "required": true
+          },
+          {
+            "name": "completed",
+            "type": "boolean",
+            "required": true
+          }
+        ]
+      },
+      {
+        "name": "FilterBar",
+        "description": "Navigation for task filtering",
+        "exportType": "named",
+        "props": [
+          {
+            "name": "currentFilter",
+            "type": "string",
+            "required": true
+          },
+          {
+            "name": "onFilterChange",
+            "type": "() => void",
+            "required": true
+          }
+        ]
+      },
+      {
+        "name": "StatsSummary",
+        "description": "Display of task counts",
+        "exportType": "named",
+        "props": [
+          {
+            "name": "total",
+            "type": "number",
+            "required": true
+          },
+          {
+            "name": "active",
+            "type": "number",
+            "required": true
+          },
+          {
+            "name": "completed",
+            "type": "number",
+            "required": true
+          }
+        ]
+      },
+      {
+        "name": "EmptyState",
+        "description": "Visual indicator for empty list",
+        "exportType": "named",
+        "props": []
+      }
+    ]
+  },
+  "generatedProject": {
+    "project": {
+      "framework": "react-vite",
+      "language": "TypeScript",
+      "packageManager": "pnpm",
+      "outputDirectory": "dist"
+    },
+    "commands": {
+      "install": "pnpm install",
+      "dev": "pnpm dev",
+      "build": "pnpm build"
+    },
+    "files": [
+      {
+        "path": "package.json",
+        "content": "{\n  \"name\": \"todo-application\",\n  \"private\": true,\n  \"version\": \"0.0.0\",\n  \"type\": \"module\",\n  \"scripts\": {\n    \"dev\": \"vite\",\n    \"build\": \"tsc -b && vite build\",\n    \"lint\": \"eslint .\",\n    \"preview\": \"vite preview\"\n  },\n  \"dependencies\": {\n    \"react\": \"^19.0.0\",\n    \"react-dom\": \"^19.0.0\",\n    \"lucide-react\": \"latest\",\n    \"clsx\": \"latest\",\n    \"tailwind-merge\": \"latest\"\n  },\n  \"devDependencies\": {\n    \"@eslint/js\": \"^9.0.0\",\n    \"@types/react\": \"^19.0.0\",\n    \"@types/react-dom\": \"^19.0.0\",\n    \"@vitejs/plugin-react\": \"^4.0.0\",\n    \"eslint\": \"^9.0.0\",\n    \"eslint-plugin-react-hooks\": \"^5.0.0\",\n    \"eslint-plugin-react-refresh\": \"^0.4.0\",\n    \"globals\": \"^15.0.0\",\n    \"typescript\": \"^5.0.0\",\n    \"vite\": \"^6.0.0\",\n    \"tailwindcss\": \"^4.0.0\",\n    \"@tailwindcss/vite\": \"^4.0.0\"\n  }\n}"
+      },
+      {
+        "path": "tsconfig.json",
+        "content": "{\n  \"files\": [],\n  \"references\": [\n    { \"path\": \"./tsconfig.app.json\" },\n    { \"path\": \"./tsconfig.node.json\" }\n  ]\n}"
+      },
+      {
+        "path": "tsconfig.app.json",
+        "content": "{\n  \"compilerOptions\": {\n    \"target\": \"ES2020\",\n    \"useDefineForClassFields\": true,\n    \"lib\": [\"ES2020\", \"DOM\", \"DOM.Iterable\"],\n    \"module\": \"ESNext\",\n    \"skipLibCheck\": true,\n    \"moduleResolution\": \"bundler\",\n    \"allowImportingTsExtensions\": true,\n    \"resolveJsonModule\": true,\n    \"isolatedModules\": true,\n    \"noEmit\": true,\n    \"jsx\": \"react-jsx\",\n    \"types\": [\"vite/client\", \"react\", \"react-dom\"],\n    \"strict\": true,\n    \"noUnusedLocals\": false,\n    \"noUnusedParameters\": false,\n    \"noFallthroughCasesInSwitch\": false\n  },\n  \"include\": [\"src\"]\n}"
+      },
+      {
+        "path": "tsconfig.node.json",
+        "content": "{\n  \"compilerOptions\": {\n    \"target\": \"ES2022\",\n    \"lib\": [\"ES2023\"],\n    \"module\": \"ESNext\",\n    \"skipLibCheck\": true,\n    \"moduleResolution\": \"bundler\",\n    \"allowImportingTsExtensions\": true,\n    \"isolatedModules\": true,\n    \"moduleDetection\": \"force\",\n    \"noEmit\": true,\n    \"strict\": true,\n    \"noUnusedLocals\": true,\n    \"noUnusedParameters\": true,\n    \"noFallthroughCasesInSwitch\": true\n  },\n  \"include\": [\"vite.config.ts\"]\n}"
+      },
+      {
+        "path": "vite.config.ts",
+        "content": "import { defineConfig } from 'vite';\nimport react from '@vitejs/plugin-react';\nimport tailwindcss from '@tailwindcss/vite';\n\nexport default defineConfig({\n  plugins: [react(), tailwindcss()],\n});"
+      },
+      {
+        "path": "eslint.config.js",
+        "content": "import js from '@eslint/js';\nimport globals from 'globals';\nimport reactHooks from 'eslint-plugin-react-hooks';\nimport reactRefresh from 'eslint-plugin-react-refresh';\nimport tseslint from 'typescript-eslint';\n\nexport default tseslint.config(\n  { ignores: ['dist'] },\n  {\n    extends: [js.configs.recommended, ...tseslint.configs.recommended],\n    files: ['**/*.{ts,tsx}'],\n    languageOptions: {\n      ecmaVersion: 2020,\n      globals: globals.browser,\n    },\n    plugins: {\n      'react-hooks': reactHooks,\n      'react-refresh': reactRefresh,\n    },\n    rules: {\n      ...reactHooks.configs.recommended.rules,\n      'react-refresh/only-export-components': [\n        'warn',\n        { allowConstantExport: true },\n      ],\n    },\n  }\n);"
+      },
+      {
+        "path": ".gitignore",
+        "content": "node_modules/\ndist/\ndist-ssr/\n*.local\n.env\n.env.*\n!.env.example\n.DS_Store\nThumbs.db"
+      },
+      {
+        "path": "README.md",
+        "content": "# todo-application\n\nThis is a generated frontend MVP built with React, TypeScript, Vite, and Tailwind CSS.\n\n## Getting Started\n\n1. Install dependencies:\n   ```bash\n   pnpm install\n   ```\n2. Run the development server:\n   ```bash\n   pnpm run dev\n   ```"
+      },
+      {
+        "path": ".env.example",
+        "content": "# Public API Keys (must be prefixed with VITE_)\nVITE_API_URL=http://localhost:3000"
+      },
+      {
+        "path": "index.html",
+        "content": "<!doctype html>\n<html lang=\"en\">\n  <head>\n    <meta charset=\"UTF-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n    <title>React App</title>\n  </head>\n  <body>\n    <div id=\"root\"></div>\n    <script type=\"module\" src=\"/src/main.tsx\"></script>\n  </body>\n</html>"
+      },
+      {
+        "path": "src/main.tsx",
+        "content": "import { StrictMode } from 'react';\nimport { createRoot } from 'react-dom/client';\nimport './index.css';\nimport App from './App.tsx';\n\ncreateRoot(document.getElementById('root')!).render(\n  <StrictMode>\n    <App />\n  </StrictMode>,\n);"
+      },
+      {
+        "path": "src/index.css",
+        "content": "@import \"tailwindcss\";\n\nbody {\n  margin: 0;\n  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;\n  background-color: #f9fafb;\n  color: #111827;\n}"
+      },
+      {
+        "path": "src/hooks/useLocalStorage.ts",
+        "content": "import { useState, useEffect } from 'react'; export function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T) => void] { const [storedValue, setStoredValue] = useState<T>(() => { try { const item = window.localStorage.getItem(key); return item ? JSON.parse(item) : initialValue; } catch (error) { return initialValue; } }); const setValue = (value: T) => { try { setStoredValue(value); window.localStorage.setItem(key, JSON.stringify(value)); } catch (error) { console.error(error); } }; return [storedValue, setValue]; }"
+      },
+      {
+        "path": "src/context/TodoContext.tsx",
+        "content": "import React, { createContext, useContext, ReactNode } from 'react'; import { useLocalStorage } from '../hooks/useLocalStorage'; export interface Todo { id: string; text: string; completed: boolean; } interface TodoContextType { todos: Todo[]; addTodo: (text: string) => void; toggleTodo: (id: string) => void; deleteTodo: (id: string) => void; } const TodoContext = createContext<TodoContextType | undefined>(undefined); export const TodoProvider = ({ children }: { children: ReactNode }) => { const [todos, setTodos] = useLocalStorage<Todo[]>('todos', []); const addTodo = (text: string) => setTodos([...todos, { id: crypto.randomUUID(), text, completed: false }]); const toggleTodo = (id: string) => setTodos(todos.map(t => t.id === id ? { ...t, completed: !t.completed } : t)); const deleteTodo = (id: string) => setTodos(todos.filter(t => t.id !== id)); return <TodoContext.Provider value={{ todos, addTodo, toggleTodo, deleteTodo }}>{children}</TodoContext.Provider>; }; export const useTodo = () => { const context = useContext(TodoContext); if (!context) throw new Error('useTodo must be used within a TodoProvider'); return context; };"
+      },
+      {
+        "path": "src/components/TodoInput.tsx",
+        "content": "import React, { useState } from 'react'; export const TodoInput: React.FC<{ onAdd: (text: string) => void }> = ({ onAdd }) => { const [value, setValue] = useState(''); const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); if (value.trim()) { onAdd(value); setValue(''); } }; return (<form onSubmit={handleSubmit} className=\"flex gap-2 p-4\"><input type=\"text\" value={value} onChange={(e) => setValue(e.target.value)} placeholder=\"Add a new task...\" className=\"flex-1 bg-gray-800 text-white p-2 rounded border border-gray-700 focus:outline-none focus:border-indigo-500\" /><button type=\"submit\" className=\"bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700\">Add</button></form>); };"
+      },
+      {
+        "path": "src/components/TodoItem.tsx",
+        "content": "import React from 'react'; export const TodoItem: React.FC<{ id: string; text: string; completed: boolean; onToggle: (id: string) => void; onDelete: (id: string) => void }> = ({ id, text, completed, onToggle, onDelete }) => { return (<div className=\"flex items-center justify-between p-4 border-b border-gray-800\"><div className=\"flex items-center gap-3\"><input type=\"checkbox\" checked={completed} onChange={() => onToggle(id)} className=\"w-5 h-5 accent-indigo-600\" /><span className={`text-white ${completed ? 'line-through text-gray-500' : ''}`}>{text}</span></div><button onClick={() => onDelete(id)} className=\"text-red-400 hover:text-red-300\">Delete</button></div>); };"
+      },
+      {
+        "path": "src/components/FilterBar.tsx",
+        "content": "import React from 'react'; export const FilterBar: React.FC<{ currentFilter: 'all' | 'active' | 'completed'; onFilterChange: (filter: 'all' | 'active' | 'completed') => void }> = ({ currentFilter, onFilterChange }) => { const filters = ['all', 'active', 'completed'] as const; return (<div className=\"flex gap-2 p-4\">{filters.map((f) => (<button key={f} onClick={() => onFilterChange(f)} className={`px-3 py-1 rounded capitalize ${currentFilter === f ? 'bg-indigo-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}>{f}</button>))}</div>); };"
+      },
+      {
+        "path": "src/components/StatsSummary.tsx",
+        "content": "import React from 'react'; export const StatsSummary: React.FC<{ total: number; active: number; completed: number }> = ({ total, active, completed }) => { return (<div className=\"grid grid-cols-3 gap-4 p-4 bg-gray-800 rounded-lg border border-gray-700\"><div className=\"text-center\"><p className=\"text-sm text-gray-400\">Total</p><p className=\"text-2xl font-bold text-white\">{total}</p></div><div className=\"text-center\"><p className=\"text-sm text-gray-400\">Active</p><p className=\"text-2xl font-bold text-indigo-400\">{active}</p></div><div className=\"text-center\"><p className=\"text-sm text-gray-400\">Completed</p><p className=\"text-2xl font-bold text-emerald-400\">{completed}</p></div></div>); };"
+      },
+      {
+        "path": "src/components/EmptyState.tsx",
+        "content": "import React from 'react'; export const EmptyState: React.FC = () => { return (<div className=\"flex flex-col items-center justify-center py-12 text-center\"><div className=\"w-16 h-16 bg-gray-800 rounded-full flex items-center justify-center mb-4\"><span className=\"text-2xl\">✨</span></div><h3 className=\"text-lg font-medium text-white\">No tasks yet</h3><p className=\"text-gray-400\">Get started by adding your first task above.</p></div>); };"
+      }
+    ]
+  }
+}

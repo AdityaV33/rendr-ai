@@ -13,6 +13,19 @@ export interface ValidationState {
 
 export type GraphStatus = "idle" | "running" | "paused" | "completed" | "failed";
 
+export type GraphEventType = 
+  | "planner_started" | "planner_completed"
+  | "architect_started" | "architect_completed"
+  | "generator_started" | "generator_completed"
+  | "validator_started" | "validator_completed"
+  | "graph_started" | "graph_completed";
+
+export interface GraphEvent {
+  type: GraphEventType;
+  timestamp: number;
+  durationMs?: number;
+}
+
 export type GraphNodeName =
   | "planner"
   | "architect"
