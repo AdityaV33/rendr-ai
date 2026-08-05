@@ -7,9 +7,6 @@ export interface GenerationProject {
 export interface WorkspaceState {
   readonly workspaceId?: string;
 }
-export interface ValidationState {
-  readonly valid: boolean;
-}
 
 export type GraphStatus = "idle" | "running" | "paused" | "completed" | "failed";
 

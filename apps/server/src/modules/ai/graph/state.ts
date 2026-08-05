@@ -1,12 +1,12 @@
 import type { ProjectPlan } from "../types/project-plan.types.js";
 import type { ArchitecturePlan } from "../types/architecture-plan.types.js";
 import type { GeneratedProject } from "../types/generated-project.types.js";
+import type { ValidationResult } from "../types/validation.types.js";
 import type {
   GraphStatus,
   GraphNodeName,
   GenerationProject,
   WorkspaceState,
-  ValidationState,
   Checkpoint,
   ExecutionHistoryEvent,
   BuildResult,
@@ -22,7 +22,7 @@ export interface GenerationState {
   plan?: ProjectPlan;
   architecture?: ArchitecturePlan;
   generatedFiles?: GeneratedProject;
-  validationResult?: ValidationState;
+  validationResult?: ValidationResult;
   workspace?: WorkspaceState;
   buildResult?: BuildResult;
   repairAttempts: number;

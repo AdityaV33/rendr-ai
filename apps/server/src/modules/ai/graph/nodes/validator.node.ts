@@ -9,11 +9,11 @@ export class ValidatorNode {
   constructor(private readonly validatorService: ValidatorService) {}
 
   async execute(state: GenerationState): Promise<GenerationState> {
-    // Delegate to the existing Phase 6 validator service
-    await this.validatorService.execute();
+    const validationResult = await this.validatorService.execute(state);
     
     return {
       ...state,
+      validationResult,
     };
   }
 }
