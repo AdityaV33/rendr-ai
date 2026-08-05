@@ -6,6 +6,7 @@ import { BadRequestError, InternalServerError } from "../lib/http-error.js";
 import { createGenerationGraph } from "./graph/factory.js";
 import type { GenerationGraph } from "./graph/graph.js";
 import type { GenerationState } from "./graph/state.js";
+import { ModelSchedulerService } from "./scheduler/index.js";
 
 /**
  * AiService is the top-level orchestrator for all AI operations.
@@ -16,7 +17,8 @@ export class AiService {
   private readonly graph: GenerationGraph;
 
   constructor() {
-    this.gemini = new GeminiService();
+    const scheduler = new ModelSchedulerService();
+    this.gemini = new GeminiService(scheduler);
     this.graph = createGenerationGraph(this.gemini);
   }
 

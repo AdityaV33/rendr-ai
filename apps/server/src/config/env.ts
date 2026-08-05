@@ -34,11 +34,13 @@ const envSchema = z.object({
       message: "GEMINI_MODELS must contain at least one valid model.",
     }),
 
-  GEMINI_TEMPERATURE: z.coerce.number().default(0.7),
+  GEMINI_TEMPERATURE: z.coerce.number().min(0).max(1).default(0.7),
 
-  GEMINI_MAX_OUTPUT_TOKENS: z.coerce.number().default(8192),
+  GEMINI_MAX_OUTPUT_TOKENS: z.coerce.number().positive().default(8192),
 
-  GEMINI_TIMEOUT_MS: z.coerce.number().default(60000),
+  GEMINI_TIMEOUT_MS: z.coerce.number().positive().default(60000),
+
+  MODEL_COOLDOWN_MS: z.coerce.number().positive().default(30000),
 });
 
 export const env = envSchema.parse(process.env);

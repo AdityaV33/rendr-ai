@@ -2,8 +2,11 @@ import { GoogleGenAI } from "@google/genai";
 import { env } from "../../../config/env.js";
 import { InternalServerError } from "../../lib/http-error.js";
 
+import { ModelSchedulerService } from "../scheduler/model-scheduler.service.js";
+
 export class GeminiService {
   private readonly client: GoogleGenAI;
+  private readonly scheduler: ModelSchedulerService;
 
   // Encapsulated Gemini configuration
   private readonly generationConfig = {
@@ -12,7 +15,8 @@ export class GeminiService {
   };
   private readonly requestTimeoutMs = env.GEMINI_TIMEOUT_MS;
 
-  constructor() {
+  constructor(scheduler: ModelSchedulerService) {
+    this.scheduler = scheduler;
     this.client = new GoogleGenAI({
       apiKey: env.GEMINI_API_KEY,
     });
@@ -23,32 +27,28 @@ export class GeminiService {
    * Includes retry and timeout mechanisms.
    */
   async generateText(prompt: string, systemInstruction?: string): Promise<string> {
-    try {
-      return await this.withRetry(async (activeModel) => {
-        const response = await this.withTimeout(
-          this.client.models.generateContent({
-            model: activeModel,
-            contents: prompt,
-            config: {
-              ...this.generationConfig,
-              systemInstruction,
-            },
-          })
-        );
+    return this.executeWithScheduler(async (activeModel) => {
+      const response = await this.withTimeout(
+        this.client.models.generateContent({
+          model: activeModel,
+          contents: prompt,
+          config: {
+            ...this.generationConfig,
+            systemInstruction,
+          },
+        })
+      );
 
-        if (response.candidates?.[0]?.finishReason === "MAX_TOKENS") {
-          throw new Error("MAX_TOKENS_EXCEEDED");
-        }
+      if (response.candidates?.[0]?.finishReason === "MAX_TOKENS") {
+        throw new Error("MAX_TOKENS_EXCEEDED");
+      }
 
-        if (!response.text) {
-          throw new Error("Empty response from Gemini API");
-        }
+      if (!response.text) {
+        throw new Error("Empty response from Gemini API");
+      }
 
-        return response.text;
-      });
-    } catch (error) {
-      this.handleError(error);
-    }
+      return response.text;
+    });
   }
 
   /**
@@ -60,36 +60,32 @@ export class GeminiService {
     systemInstruction?: string,
     config?: { temperature?: number },
   ): Promise<T> {
-    try {
-      return await this.withRetry(async (activeModel) => {
-        const response = await this.withTimeout(
-          this.client.models.generateContent({
-            model: activeModel,
-            contents: prompt,
-            config: {
-              ...this.generationConfig,
-              ...config,
-              systemInstruction,
-              responseMimeType: "application/json",
-              responseSchema,
-            },
-          })
-        );
+    return this.executeWithScheduler(async (activeModel) => {
+      const response = await this.withTimeout(
+        this.client.models.generateContent({
+          model: activeModel,
+          contents: prompt,
+          config: {
+            ...this.generationConfig,
+            ...config,
+            systemInstruction,
+            responseMimeType: "application/json",
+            responseSchema,
+          },
+        })
+      );
 
-        if (response.candidates?.[0]?.finishReason === "MAX_TOKENS") {
-          console.warn("[GeminiService] Response truncated: MAX_TOKENS reached.");
-          throw new Error("MAX_TOKENS_EXCEEDED");
-        }
+      if (response.candidates?.[0]?.finishReason === "MAX_TOKENS") {
+        console.warn("[GeminiService] Response truncated: MAX_TOKENS reached.");
+        throw new Error("MAX_TOKENS_EXCEEDED");
+      }
 
-        if (!response.text) {
-          throw new Error("Empty response from Gemini API");
-        }
+      if (!response.text) {
+        throw new Error("Empty response from Gemini API");
+      }
 
-        return this.parseStructuredResponse<T>(response.text);
-      });
-    } catch (error) {
-      this.handleError(error);
-    }
+      return this.parseStructuredResponse<T>(response.text);
+    });
   }
 
   /**
@@ -116,6 +112,7 @@ export class GeminiService {
       throw new Error("Malformed JSON response from AI service.");
     }
   }
+
   /**
    * Centralized error handler to map SDK errors to application errors.
    */
@@ -158,28 +155,25 @@ export class GeminiService {
   }
 
   /**
-   * Executes a given async function routing through fallback models on availability errors.
+   * Executes a given async function using the ModelSchedulerService.
    */
-  private async withRetry<T>(fn: (model: string) => Promise<T>): Promise<T> {
-    const models = env.GEMINI_MODELS;
-    const attemptedModels: string[] = [];
+  private async executeWithScheduler<T>(fn: (model: string) => Promise<T>): Promise<T> {
+    const maxRetries = env.GEMINI_MODELS.length * 2; // Allow enough retries across models
+    let attempt = 0;
 
-    console.log(`[GeminiService] Starting request with primary model: ${models[0]}`);
-
-    for (let i = 0; i < models.length; i++) {
-      const currentModel = models[i];
-      attemptedModels.push(currentModel);
+    while (attempt < maxRetries) {
+      attempt++;
+      const activeModel = await this.scheduler.acquireModel();
+      const startTime = performance.now();
 
       try {
-        const result = await fn(currentModel);
-        if (i > 0) {
-          console.log(`[GeminiService] Final successful fallback model: ${currentModel}`);
-        }
+        const result = await fn(activeModel);
+        this.scheduler.reportSuccess(activeModel, performance.now() - startTime);
         return result;
       } catch (error: unknown) {
-        // Determine if error is transient safely without using 'any'
+        this.scheduler.reportFailure(activeModel, error);
+
         const isTimeout = error instanceof Error && error.message === "Request timed out";
-        
         const errObj = error as Record<string, unknown>;
         const status = typeof errObj?.status === "number" ? errObj.status : undefined;
         const code = typeof errObj?.code === "string" ? errObj.code : undefined;
@@ -193,27 +187,15 @@ export class GeminiService {
         const isTransient = isTimeout || isRateLimit || isServerFailure || isNetworkFailure || isNotFound;
 
         if (!isTransient) {
-          throw error; // Schema validation failure, malformed JSON, invalid prompt
+          // If it's a fatal error (like malformed JSON or validation), rethrow immediately.
+          // The scheduler has already recorded the failure (but did not cool it down).
+          this.handleError(error);
         }
 
-        let reason = "Unknown transient error";
-        if (isRateLimit) reason = "429 Quota Exceeded / Rate Limited";
-        else if (isNotFound) reason = "404 Model Unavailable / Deprecated";
-        else if (isServerFailure) reason = `${status} Server Error`;
-        else if (isTimeout) reason = "Request Timeout";
-        else if (isNetworkFailure) reason = "Network Failure";
-
-        if (i < models.length - 1) {
-          const nextModel = models[i + 1];
-          console.log(`[GeminiService] Request failed on ${currentModel}. Reason: ${reason}`);
-          console.log(`[GeminiService] Fallback switching to next priority model: ${nextModel}`);
-        } else {
-          console.log(`[GeminiService] Request failed on ${currentModel}. Reason: ${reason}`);
-        }
+        // It's a transient error, so we continue the while loop to retry with a new model
       }
     }
-    
-    console.error(`[GeminiService] All fallback models exhausted. Models attempted: ${attemptedModels.join(", ")}`);
-    throw new InternalServerError("An error occurred while communicating with the AI service. All fallback models failed.");
+
+    throw new InternalServerError("An error occurred while communicating with the AI service. Max scheduling retries exhausted.");
   }
 }
