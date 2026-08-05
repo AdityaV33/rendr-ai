@@ -3,7 +3,10 @@ import type { ArchitecturePlan } from "../types/architecture-plan.types.js";
 import type { GeneratedProject } from "../types/generated-project.types.js";
 import type { GeneratedFile } from "../types/generated-file.types.js";
 
-export interface GenerationProject {}
+export interface GenerationProject {
+  id: string;
+  framework: string;
+}
 export interface WorkspaceState {}
 export interface ValidationState {}
 
