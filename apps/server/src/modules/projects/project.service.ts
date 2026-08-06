@@ -6,6 +6,7 @@ import { NotFoundError } from "../lib/http-error.js";
 import * as workspaceService from "../runtime/workspace.service.js";
 import * as runtimeManagerService from "../runtime/runtime-manager.service.js";
 
+import * as workspaceFileService from "../runtime/workspace-file.service.js";
 
 export async function createProject(
   owner: string,
@@ -73,15 +74,8 @@ export async function deleteProject(
   return project;
 }
 
-export async function generateProject(
-  owner: string,
-  projectId: string,
-) {
-  const project = await ProjectModel.findOne({
-    owner,
-    _id: projectId,
-  });
-
+export async function generateProject(owner: string, projectId: string) {
+  const project = await ProjectModel.findOne({ owner, _id: projectId });
   if (!project) {
     throw new NotFoundError("Project not found");
   }
@@ -89,37 +83,96 @@ export async function generateProject(
   project.status = "generating";
   await project.save();
 
+  let runtimePrepPromise: Promise<void> | null = null;
+  let runtimeTime = 0;
+  const startOverall = performance.now();
+
+  console.log("\n===================================");
+  console.log("Parallel Execution Started");
+  console.log("===================================");
+
   try {
-    console.log("\n[Pipeline] Planner Started");
-    console.log("[Pipeline] Architecture Generation Started");
-    console.log("[Pipeline] Generator Started");
+    const { projectPlan, architecturePlan, generatedProject } = await aiService.generate({ 
+      prompt: project.prompt,
+      onEvent: (event) => {
+        if (event.type === "architect_completed" && event.state.architecture) {
+          console.log("\n-----------------------------------");
+          console.log("Runtime Branch Started");
+          console.log("-----------------------------------");
+          
+          const framework = event.state.architecture.stack.frontendFramework;
+          const packageManager = event.state.architecture.stack.packageManager ?? "npm";
+          const installCommand = `${packageManager} install`;
+          
+          const startRuntime = performance.now();
+          runtimePrepPromise = runtimeManagerService.prepareWorkspace(
+            projectId, 
+            framework,
+            installCommand
+          ).then(() => {
+            runtimeTime = performance.now() - startRuntime;
+            console.log("\n-----------------------------------");
+            console.log("Dependencies Installed");
+            console.log("Waiting for AI generation...");
+            console.log("-----------------------------------");
+          });
+        }
+      }
+    });
 
-    const { projectPlan, architecturePlan, generatedProject } = await aiService.generate({ prompt: project.prompt });
+    const aiTime = performance.now() - startOverall;
 
-    console.log("[Pipeline] Generator Finished");
-    console.log("[Pipeline] Persisting to Database");
+    console.log("\n-----------------------------------");
+    console.log("Generation Complete");
+    console.log("-----------------------------------");
+
+    console.log("\n[Pipeline] Synchronizing Runtime Workspace");
+
+    if (runtimePrepPromise) {
+      await runtimePrepPromise; // If runtime failed, this will throw
+    }
+
+    const startSync = performance.now();
 
     project.aiPlan = projectPlan;
     project.architecturePlan = architecturePlan;
     project.generatedProject = generatedProject;
     
-    // Convert GeneratedProject files[] to string[] for the Project.files schema
     project.files = generatedProject.files.map(f => f.path);
     project.framework = generatedProject.project.framework as ProjectFramework;
-
-    console.log(`[Pipeline] Resolved Framework: ${project.framework} | Language: ${generatedProject.project.language}`);
-
     project.status = "ready";
 
     await project.save();
 
-    console.log("[Pipeline] Project Saved");
-    console.log("[Pipeline] Runtime Starting");
+    await workspaceFileService.writeGeneratedProject(projectId, generatedProject.files);
+    
+    const syncTime = performance.now() - startSync;
+
+    console.log("[Runtime] Preview Started");
+    await runtimeManagerService.startPreviewOnly(projectId, generatedProject.commands.dev);
+
+    const totalTime = performance.now() - startOverall;
+
+    console.log("\n===================================");
+    console.log(`AI Branch: ${aiTime.toFixed(0)}ms`);
+    console.log(`Runtime Branch: ${runtimeTime.toFixed(0)}ms`);
+    console.log(`Synchronization: ${syncTime.toFixed(0)}ms`);
+    console.log(`Total Pipeline: ${totalTime.toFixed(0)}ms`);
+    console.log("===================================\n");
 
     return project;
   } catch (error) {
     project.status = "failed";
     await project.save();
+    
+    // AI Failure / Runtime Failure Cleanup
+    try {
+      runtimeManagerService.stopRuntime(projectId);
+      await workspaceService.deleteWorkspace(projectId);
+    } catch (cleanupErr) {
+      console.error(`[Pipeline] Failed to clean up workspace after error:`, cleanupErr);
+    }
+
     throw error;
   }
 }

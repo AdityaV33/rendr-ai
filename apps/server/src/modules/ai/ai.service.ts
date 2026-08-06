@@ -22,7 +22,7 @@ export class AiService {
     this.graph = createGenerationGraph(this.gemini);
   }
 
-  async generate(data: { prompt?: string }): Promise<{ projectPlan: ProjectPlan; architecturePlan: ArchitecturePlan; generatedProject: GeneratedProject }> {
+  async generate(data: { prompt?: string, onEvent?: (event: import("./graph/types.js").GraphEvent) => void }): Promise<{ projectPlan: ProjectPlan; architecturePlan: ArchitecturePlan; generatedProject: GeneratedProject }> {
     if (!data.prompt) {
       throw new BadRequestError("A prompt is required.");
     }
@@ -43,6 +43,7 @@ export class AiService {
     };
 
     const finalState = await this.graph.execute(initialState, (event) => {
+      // 1. Log the event internally
       if (event.type.endsWith("_started")) {
         const node = event.type.split("_")[0];
         console.log(`[Pipeline] ${node.charAt(0).toUpperCase() + node.slice(1)} Started`);
@@ -50,6 +51,11 @@ export class AiService {
         const node = event.type.split("_")[0];
         const duration = event.durationMs ? `(${event.durationMs.toFixed(0)}ms)` : "";
         console.log(`[Pipeline] ${node.charAt(0).toUpperCase() + node.slice(1)} Finished ${duration}`);
+      }
+      
+      // 2. Forward to external listener if provided
+      if (data.onEvent) {
+        data.onEvent(event);
       }
     });
 

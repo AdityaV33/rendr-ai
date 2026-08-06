@@ -23,7 +23,7 @@ export class GenerationGraph {
   ): Promise<GenerationState> {
     const emit = (type: GraphEventType, durationMs?: number) => {
       if (onEvent) {
-        onEvent({ type, timestamp: Date.now(), durationMs });
+        onEvent({ type, timestamp: Date.now(), durationMs, state: currentState });
       }
     };
 

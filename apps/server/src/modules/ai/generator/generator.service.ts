@@ -166,28 +166,32 @@ export class GeneratorService {
       }
     }
 
-    const batches: { id: string; files: ArchitecturePlan["fileStructure"] }[] = [];
+    const layers: { name: string; batches: { id: string; files: ArchitecturePlan["fileStructure"] }[] }[] = [];
     let batchCounter = 1;
 
-    const addBatches = (categoryName: string, files: ArchitecturePlan["fileStructure"]) => {
+    const addLayer = (layerName: string, ...categoriesToMerge: ArchitecturePlan["fileStructure"][]) => {
+      const allFiles = categoriesToMerge.flat();
+      if (allFiles.length === 0) return;
+
+      const layerBatches: { id: string; files: ArchitecturePlan["fileStructure"] }[] = [];
       let currentBatchFiles: ArchitecturePlan["fileStructure"] = [];
       let currentBudget = 0;
 
-      for (const file of files) {
+      for (const file of allFiles) {
         const fileBudget = estimateComplexity(file.path);
         
         if (fileBudget >= SAFE_BATCH_OUTPUT_BUDGET) {
           if (currentBatchFiles.length > 0) {
-            batches.push({ id: `${categoryName}-batch-${batchCounter++}`, files: currentBatchFiles });
+            layerBatches.push({ id: `${layerName}-batch-${batchCounter++}`, files: currentBatchFiles });
             currentBatchFiles = [];
             currentBudget = 0;
           }
-          batches.push({ id: `${categoryName}-batch-${batchCounter++}`, files: [file] });
+          layerBatches.push({ id: `${layerName}-batch-${batchCounter++}`, files: [file] });
           continue;
         }
 
         if (currentBudget + fileBudget > SAFE_BATCH_OUTPUT_BUDGET) {
-          batches.push({ id: `${categoryName}-batch-${batchCounter++}`, files: currentBatchFiles });
+          layerBatches.push({ id: `${layerName}-batch-${batchCounter++}`, files: currentBatchFiles });
           currentBatchFiles = [file];
           currentBudget = fileBudget;
         } else {
@@ -197,18 +201,22 @@ export class GeneratorService {
       }
       
       if (currentBatchFiles.length > 0) {
-        batches.push({ id: `${categoryName}-batch-${batchCounter++}`, files: currentBatchFiles });
+        layerBatches.push({ id: `${layerName}-batch-${batchCounter++}`, files: currentBatchFiles });
       }
+
+      layers.push({ name: layerName, batches: layerBatches });
     };
 
-    // Add batches in the exact requested deterministic order
-    addBatches("shared", categories.shared);
-    addBatches("reusableUi", categories.reusableUi);
-    addBatches("features", categories.features);
-    addBatches("pages", categories.pages);
-    addBatches("other", categories.other);
+    // Layer 0: Shared (types, hooks, stores, context, utilities)
+    addLayer("shared", categories.shared);
+    // Layer 1: Reusable UI & Feature Components
+    addLayer("components", categories.reusableUi, categories.features);
+    // Layer 2: Pages
+    addLayer("pages", categories.pages);
+    // Layer 3: Root Files (App.tsx, etc.)
+    addLayer("root", categories.other);
 
-    return { batches: batches.filter(b => b.files.length > 0) };
+    return { layers };
   }
 
   /**
@@ -217,17 +225,14 @@ export class GeneratorService {
   private async executeBatches(
     projectPlan: ProjectPlan,
     architecturePlan: ArchitecturePlan,
-    generationPlan: { batches: { id: string; files: ArchitecturePlan["fileStructure"] }[] }
+    generationPlan: { layers: { name: string; batches: { id: string; files: ArchitecturePlan["fileStructure"] }[] }[] }
   ): Promise<GeneratedProject[]> {
     const results: GeneratedProject[] = [];
 
-    const queue = [...generationPlan.batches];
-
-    while (queue.length > 0) {
-      const batch = queue.shift()!;
+    const executeBatchWithRetries = async (batch: { id: string; files: ArchitecturePlan["fileStructure"] }): Promise<GeneratedProject[]> => {
       try {
         const result = await this.generateBatch(projectPlan, architecturePlan, batch);
-        results.push(result);
+        return [result];
       } catch (error) {
         if (error instanceof Error && error.message === "MAX_TOKENS_EXCEEDED") {
           console.error(`[Generator] MAX_TOKENS for batch ${batch.id}`);
@@ -235,18 +240,35 @@ export class GeneratorService {
             throw new InternalServerError(`File ${batch.files[0].path} is too large and exceeds the model's output limit. Adaptive recovery failed.`);
           }
           
-          console.warn(`[Generator] Batch ${batch.id} exceeded output tokens. Adaptive recovery: splitting batch.`);
+          console.warn(`[Generator] Batch ${batch.id} exceeded output tokens. Adaptive recovery: splitting batch in parallel.`);
           
           const mid = Math.ceil(batch.files.length / 2);
           const firstHalf = batch.files.slice(0, mid);
           const secondHalf = batch.files.slice(mid);
           
-          queue.unshift({ id: `${batch.id}-split-b`, files: secondHalf });
-          queue.unshift({ id: `${batch.id}-split-a`, files: firstHalf });
+          // Execute the split halves concurrently!
+          const splitResults = await Promise.all([
+            executeBatchWithRetries({ id: `${batch.id}-split-a`, files: firstHalf }),
+            executeBatchWithRetries({ id: `${batch.id}-split-b`, files: secondHalf })
+          ]);
+          
+          return splitResults.flat();
         } else {
           throw error;
         }
       }
+    };
+
+    for (const layer of generationPlan.layers) {
+      console.log(`\n[Generator] Starting Layer ${layer.name} | Parallel Batches: ${layer.batches.length}`);
+      
+      const layerOutputs = await Promise.all(
+        layer.batches.map(batch => executeBatchWithRetries(batch))
+      );
+      
+      results.push(...layerOutputs.flat());
+      
+      console.log(`[Generator] Layer ${layer.name} Finished`);
     }
 
     return results;

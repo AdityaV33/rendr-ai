@@ -16,11 +16,13 @@ export type GraphEventType =
   | "generator_started" | "generator_completed"
   | "validator_started" | "validator_completed"
   | "graph_started" | "graph_completed";
+import type { GenerationState } from "./state.js";
 
 export interface GraphEvent {
   type: GraphEventType;
   timestamp: number;
   durationMs?: number;
+  state: GenerationState;
 }
 
 export type GraphNodeName =
