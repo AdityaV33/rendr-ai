@@ -21,6 +21,7 @@ export class VanillaStrategy implements FrameworkTemplateStrategy {
       },
       devDependencies: {
         "vite": "^6.0.0",
+        "@playwright/test": "^1.40.0",
         ...context.devDependencies
       }
     };

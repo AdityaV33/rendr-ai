@@ -21,15 +21,24 @@ export interface GenerationState {
   project: GenerationProject;
   plan?: ProjectPlan;
   architecture?: ArchitecturePlan;
+  architectFeedback?: string;
   generatedFiles?: GeneratedProject;
   validationResult?: ValidationResult;
   workspace?: WorkspaceState;
   buildResult?: BuildResult;
-  repairAttempts: number;
+  gateAttempts?: Record<string, number>;
   currentStep: GraphNodeName;
   status: GraphStatus;
   previewUrl?: string;
   errors: string[];
   executionHistory: ExecutionHistoryEvent[];
   checkpoints: Checkpoint[];
+  metrics: {
+    plannerMs: number;
+    architectMs: number;
+    generatorMs: number;
+    validationMs: number; // accumulated
+    repairMs: number; // accumulated
+    totalMs: number;
+  };
 }

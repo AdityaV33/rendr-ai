@@ -7,7 +7,11 @@ export interface ModelMetrics {
   activeRequests: number;
   successCount: number;
   failureCount: number;
+  timeoutCount: number;
+  rateLimitCount: number;
   averageLatencyMs: number;
+  averageAcquireTimeMs: number;
+  acquireCalls: number;
   consecutiveFailures: number;
   cooldownExpiryTimestamp: number | null;
 }

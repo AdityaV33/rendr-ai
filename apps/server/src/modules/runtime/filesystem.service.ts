@@ -36,6 +36,18 @@ export async function removeDirectory(
   });
 }
 
+export async function removeFile(
+  filePath: string,
+): Promise<void> {
+  try {
+    await fs.rm(filePath, {
+      force: true,
+    });
+  } catch (e) {
+    // Ignore error if it doesn't exist
+  }
+}
+
 export async function copyDirectory(
   sourcePath: string,
   destinationPath: string,
@@ -73,7 +85,7 @@ export async function listDirectory(
     },
   );
 
-  const nodes: WorkspaceFileNode[] =
+  const nodes =
     await Promise.all(
       entries.map(async (entry) => {
         const absolutePath = path.join(
@@ -85,6 +97,10 @@ export async function listDirectory(
           rootPath,
           absolutePath,
         );
+
+        if (entry.name === "node_modules" || entry.name === ".git") {
+          return null;
+        }
 
         if (entry.isDirectory()) {
           return {
@@ -107,7 +123,9 @@ export async function listDirectory(
       }),
     );
 
-  nodes.sort((a, b) => {
+  const filteredNodes = nodes.filter(n => n !== null) as WorkspaceFileNode[];
+
+  filteredNodes.sort((a, b) => {
     if (
       a.type === "folder" &&
       b.type === "file"
@@ -127,5 +145,5 @@ export async function listDirectory(
     );
   });
 
-  return nodes;
+  return filteredNodes;
 }

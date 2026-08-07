@@ -18,10 +18,11 @@ import {
   type RuntimeState,
 } from "./runtime.types.js";
 
+export { installDependencies } from "./install.service.js";
+
 export async function prepareWorkspace(
   projectId: string,
   framework: string,
-  installCommand: string
 ): Promise<void> {
   console.log(`[Runtime] Framework: ${framework}`);
 
@@ -41,25 +42,6 @@ export async function prepareWorkspace(
   if (!runtimeService.hasRuntime(projectId)) {
     runtimeService.initializeRuntime(projectId);
   }
-
-  try {
-    const tStart = performance.now();
-    runtimeService.updateRuntimeStatus(projectId, RuntimeStatus.INSTALLING);
-    console.log("[Runtime] Installing Dependencies");
-
-    const installResult = await installDependencies(projectId, installCommand);
-
-    console.log(`[Runtime] Dependencies Installed (${(performance.now() - tStart).toFixed(0)}ms)`);
-
-    if (!installResult.success) {
-      throw new InternalServerError(
-        `Failed to install project dependencies.\n\nExit Code: ${installResult.exitCode}\n\nSTDOUT:\n${installResult.stdout}\n\nSTDERR:\n${installResult.stderr}`
-      );
-    }
-  } catch (error) {
-    runtimeService.removeRuntime(projectId);
-    throw error;
-  }
 }
 
 export async function startPreviewOnly(
@@ -70,6 +52,12 @@ export async function startPreviewOnly(
     const tStart = performance.now();
     runtimeService.updateRuntimeStatus(projectId, RuntimeStatus.STARTING);
     console.log("[Runtime] Preview Starting");
+
+    const existingRuntime = runtimeService.getRuntimeState(projectId);
+    if (existingRuntime?.preview) {
+      console.log("[Runtime] Stopping existing preview before starting new one");
+      stopPreview(existingRuntime.preview);
+    }
 
     const preview = await startPreview(
       projectId,
@@ -110,13 +98,33 @@ export async function startRuntime(
     throw new InternalServerError("Project framework has not been determined.");
   }
 
-  await prepareWorkspace(projectId, project.framework, project.generatedProject?.commands.install ?? "npm install");
+  await prepareWorkspace(projectId, project.framework);
 
   if (project.generatedProject?.files) {
     await workspaceFileService.writeGeneratedProject(
       projectId,
       project.generatedProject.files,
     );
+  }
+  
+  try {
+    const installCommand = project.generatedProject?.commands.install ?? "npm install";
+    const tStart = performance.now();
+    runtimeService.updateRuntimeStatus(projectId, RuntimeStatus.INSTALLING);
+    console.log("[Runtime] Installing Dependencies");
+
+    const installResult = await installDependencies(projectId, installCommand);
+
+    console.log(`[Runtime] Dependencies Installed (${(performance.now() - tStart).toFixed(0)}ms)`);
+
+    if (!installResult.success) {
+      throw new InternalServerError(
+        `Failed to install project dependencies.\n\nExit Code: ${installResult.exitCode}\n\nSTDOUT:\n${installResult.stdout}\n\nSTDERR:\n${installResult.stderr}`
+      );
+    }
+  } catch (error) {
+    runtimeService.removeRuntime(projectId);
+    throw error;
   }
 
   return startPreviewOnly(projectId, project.generatedProject?.commands.dev ?? "npm run dev");

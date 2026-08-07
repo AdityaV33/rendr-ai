@@ -1,0 +1,117 @@
+{
+  "stack": {
+    "language": "TypeScript",
+    "frontendFramework": "React",
+    "buildTool": "Vite",
+    "packageManager": "pnpm"
+  },
+  "strategies": {
+    "styling": "Tailwind CSS",
+    "routing": "None",
+    "stateManagement": "React Context",
+    "authentication": "None",
+    "designSystem": "Custom"
+  },
+  "tooling": {
+    "linting": "ESLint",
+    "formatting": "Prettier",
+    "testing": "None"
+  },
+  "environmentVariables": [],
+  "scripts": {},
+  "dependencies": [
+    {
+      "name": "lucide-react",
+      "isDev": false,
+      "reason": "Icons for UI elements"
+    }
+  ],
+  "fileStructure": [
+    {
+      "path": "src/context/FinanceContext.tsx",
+      "purpose": "Provide global state for transactions and computed balance metrics.",
+      "type": "file",
+      "complexity": "medium",
+      "responsibilities": [
+        "Own transaction state",
+        "Calculate total income, expenses, and balance",
+        "Provide add/delete actions",
+        "Filter logic by category provider state",
+        "Hold array of transaction objects {id, amount, category, type}"
+      ]
+    },
+    {
+      "path": "src/components/AddTransactionForm.tsx",
+      "purpose": "Input form to add new transactions.",
+      "type": "file",
+      "complexity": "low",
+      "responsibilities": [
+        "Capture amount, category, and type",
+        "Submit to FinanceContext",
+        "Reset form after submission"
+      ]
+    },
+    {
+      "path": "src/components/TransactionList.tsx",
+      "purpose": "Display list of transactions with category filtering.",
+      "type": "file",
+      "complexity": "medium",
+      "responsibilities": [
+        "List transactions based on filtered criteria",
+        "Trigger delete action from FinanceContext"
+      ]
+    },
+    {
+      "path": "src/App.tsx",
+      "purpose": "Root layout and assembly point for the dashboard.",
+      "type": "file",
+      "complexity": "low",
+      "responsibilities": [
+        "Compose dashboard components",
+        "Initialize FinanceContext"
+      ]
+    }
+  ],
+  "componentContracts": [
+    {
+      "name": "FinanceProvider",
+      "description": "Provider for transaction data and actions",
+      "exportType": "named",
+      "exports": [
+        "FinanceProvider",
+        "useFinance"
+      ],
+      "props": [
+        {
+          "name": "children",
+          "type": "ReactNode",
+          "required": true
+        }
+      ],
+      "publicAPI": {
+        "exports": {}
+      }
+    },
+    {
+      "name": "AddTransactionForm",
+      "description": "Form for adding transactions",
+      "exportType": "default",
+      "exports": [
+        "AddTransactionForm"
+      ],
+      "props": []
+    },
+    {
+      "name": "TransactionList",
+      "description": "List view of transactions",
+      "exportType": "default",
+      "exports": [
+        "TransactionList"
+      ],
+      "props": []
+    }
+  ],
+  "buildConfiguration": {
+    "outputDirectory": "dist"
+  }
+}

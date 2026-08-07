@@ -22,32 +22,7 @@ export const architecturePlanSchema = z.object({
   }),
 
   /** High-level architectural strategies */
-  strategies: z.object({
-    styling: z.string().describe("e.g., 'Tailwind CSS', 'Vanilla CSS', 'CSS Modules'"),
-    routing: z.string().describe("e.g., 'React Router', 'Next.js App Router', 'None'"),
-    stateManagement: z.string().describe("e.g., 'Zustand', 'React Context', 'Redux', 'None'"),
-    authentication: z.string().describe("e.g., 'JWT', 'NextAuth', 'Supabase', 'None'"),
-    designSystem: z.string().describe("e.g., 'Shadcn UI', 'Material UI', 'Custom'"),
-  }),
-
-  /** Developer tooling and configuration */
-  tooling: z.object({
-    linting: z.string().describe("e.g., 'ESLint'"),
-    formatting: z.string().describe("e.g., 'Prettier'"),
-    testing: z.string().describe("e.g., 'Vitest + React Testing Library', 'Jest', 'None'"),
-  }),
-
-  /** Required environment variables for the project */
-  environmentVariables: z.array(
-    z.object({
-      key: z.string().describe("The environment variable name, e.g., 'DATABASE_URL'"),
-      description: z.string().describe("What this variable is used for"),
-      required: z.boolean().default(true),
-    })
-  ),
-
-  /** Standard scripts for package.json */
-  scripts: z.record(z.string(), z.string()).describe("Key-value pair of npm scripts, e.g., { 'dev': 'vite' }"),
+  strategies: z.array(z.string()).describe("List of styling, state, or routing choices. e.g., ['Tailwind CSS', 'React Router', 'Zustand']"),
 
   /** Specific NPM dependencies required for the project */
   dependencies: z.array(
@@ -65,21 +40,18 @@ export const architecturePlanSchema = z.object({
       path: z.string().describe("Relative path from project root, e.g., 'src/components/Button.tsx'"),
       purpose: z.string().describe("High-level instructions for the Generator on what this file should contain. NO props or state details."),
       type: z.enum(["file", "directory"]),
+      allowedImports: z.array(z.string()).optional().describe("Strict list of other generated files (by name) or npm dependencies this file is allowed to import. e.g., ['CalculatorContext', 'react']"),
     })
   ),
-
-  /** Optional build or deployment configurations */
-  buildConfiguration: z.object({
-    outputDirectory: z.string().describe("e.g., 'dist', '.next'"),
-    nodeVersion: z.string().optional().describe("e.g., '>= 18.0.0'"),
-  }).optional(),
 
   /** The single source of truth for component APIs. Must be generated for EVERY component in the file structure (excluding root/pages). */
   componentContracts: z.array(
     z.object({
       name: z.string().describe("The exact name of the component, e.g. 'MessageCard'"),
-      description: z.string().describe("One-sentence description to disambiguate similarly named components. NO implementation details."),
+      importPath: z.string().describe("The relative import path from src root, e.g. './components/Display' or './context/CalculatorContext'"),
       exportType: z.enum(["default", "named"]),
+      exports: z.array(z.string()).describe("The exact exported symbol names this file MUST export. e.g. for a Context: ['CalculatorProvider', 'useCalculator']. For a component: ['Display']. Every consumer will import these exact names."),
+      publicAPI: z.array(z.string()).optional().describe("For hooks/contexts: the exact property names returned. e.g. ['result', 'history', 'calculate', 'clear']. Omit for simple components."),
       props: z.array(
         z.object({
           name: z.string(),
@@ -95,9 +67,28 @@ export const architecturePlanSchema = z.object({
           ]).describe("Strictly constrained type to prevent API hallucination."),
           required: z.boolean(),
         })
-      ),
+      )
     })
   ).describe("Required array containing the API contract for EVERY component you create."),
+
+  /** Behavioral contracts defining interactions and derived state */
+  behavioralContracts: z.array(
+    z.object({
+      file: z.string().describe("Must exactly match a fileStructure path."),
+      responsibilities: z.array(z.string()).describe(
+        "Explicit logical responsibilities this file owns. Use imperative language like 'Own calculator state', 'Evaluate expressions'."
+      ),
+      behaviorRules: z.array(
+        z.object({
+          trigger: z.string().describe("e.g. 'Click number', 'Component mounts'"),
+          preconditions: z.array(z.string()).default([]).describe("e.g. ['Expression is non-empty']"),
+          action: z.string().describe("e.g. 'Append digit to currentInput', 'Fetch user data'"),
+          assertions: z.array(z.string()).default([]).describe("e.g. ['Display shows result', 'History length increases by 1']"),
+        })
+      ).describe("Strict mapping of interactions to expected behaviors. Machine-oriented and concise."),
+      acceptanceCriteria: z.array(z.string()).describe("Defines exactly what 'finished' looks like. e.g. ['2 + 3 = 5', 'History is updated']"),
+    })
+  ).describe("Required array containing the behavioral contract for EVERY interactive component or page."),
 
   /** Extensibility for future phases */
   metadata: z.record(z.string(), z.unknown()).optional(),

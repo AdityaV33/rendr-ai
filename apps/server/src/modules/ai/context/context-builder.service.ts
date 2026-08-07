@@ -97,7 +97,7 @@ export class ContextBuilderService {
     const batchResponsibilities = Array.from(new Set(batchFiles.map(f => this.determineResponsibility(f.path))));
 
     let compositionTargets: CompositionTarget[] | undefined;
-    let componentContracts: Record<string, Omit<ComponentContract, "description">> | undefined;
+    let componentContracts: Record<string, ComponentContract> | undefined;
 
     const componentContractsArray = architecturePlan.componentContracts || [];
     const allContracts: Record<string, ComponentContract> = {};
@@ -126,6 +126,7 @@ export class ContextBuilderService {
           const contract = allContracts[name] || {
             name,
             exportType: "named",
+            exports: [name],
             props: []
           };
           
@@ -133,11 +134,12 @@ export class ContextBuilderService {
             name,
             importPath,
             exportType: contract.exportType,
+            exports: contract.exports || [name],
             props: contract.props
           };
         });
 
-      if (compositionTargets.length > 0) {
+      if (compositionTargets && compositionTargets.length > 0) {
         console.log(`[ContextBuilder] Composition Targets: ${compositionTargets.map(t => `${t.name}(${t.exportType}, ${t.props.length} props)`).join(", ")}`);
       }
     }
@@ -149,8 +151,7 @@ export class ContextBuilderService {
         const fileName = parts[parts.length - 1];
         const name = fileName.replace(/\.[^/.]+$/, "");
         if (allContracts[name]) {
-          const { description: _description, ...rest } = allContracts[name];
-          componentContracts[name] = rest;
+          componentContracts[name] = allContracts[name];
         }
       }
       if (Object.keys(componentContracts).length === 0) {

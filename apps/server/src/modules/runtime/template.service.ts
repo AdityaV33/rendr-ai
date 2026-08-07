@@ -71,3 +71,24 @@ export async function copyTemplate(
 
   return workspacePath;
 }
+
+export async function copyValidationTemplate(
+  projectId: string,
+  framework: string,
+): Promise<string> {
+  const templatePath = getTemplatePath(framework);
+
+  if (!(await templateExists(framework))) {
+    throw new NotFoundError(`Project template '${framework}' not found.`);
+  }
+
+  if (!(await workspaceService.validationWorkspaceExists(projectId))) {
+    await workspaceService.createValidationWorkspace(projectId);
+  }
+
+  const workspacePath = workspaceService.getValidationWorkspacePath(projectId);
+  
+  await filesystemService.copyDirectory(templatePath, workspacePath);
+
+  return workspacePath;
+}

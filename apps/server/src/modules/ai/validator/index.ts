@@ -1,1 +1,1 @@
-export * from "./validator.service.js";
+export * from "./sanity-gate.service.js";

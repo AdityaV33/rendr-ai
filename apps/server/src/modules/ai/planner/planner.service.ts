@@ -35,7 +35,7 @@ export class PlannerService {
           prompt,
           PROJECT_PLAN_GEMINI_SCHEMA,
           PLANNER_SYSTEM_PROMPT,
-          { temperature: 0.2 } // Lower temperature for more deterministic product planning
+          { temperature: 0.2, taskName: "Planner" } // Lower temperature for more deterministic product planning
         );
 
         // Validate with Zod — no raw Gemini response leaves this service

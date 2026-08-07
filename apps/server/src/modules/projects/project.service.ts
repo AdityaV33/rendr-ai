@@ -107,14 +107,9 @@ export async function generateProject(owner: string, projectId: string) {
           const startRuntime = performance.now();
           runtimePrepPromise = runtimeManagerService.prepareWorkspace(
             projectId, 
-            framework,
-            installCommand
+            framework
           ).then(() => {
             runtimeTime = performance.now() - startRuntime;
-            console.log("\n-----------------------------------");
-            console.log("Dependencies Installed");
-            console.log("Waiting for AI generation...");
-            console.log("-----------------------------------");
           });
         }
       }
@@ -139,12 +134,31 @@ export async function generateProject(owner: string, projectId: string) {
     project.generatedProject = generatedProject;
     
     project.files = generatedProject.files.map(f => f.path);
-    project.framework = generatedProject.project.framework as ProjectFramework;
-    project.status = "ready";
+    project.framework = generatedProject.project.framework as import("./project.model.js").ProjectFramework;
+    project.status = "building";
 
     await project.save();
 
     await workspaceFileService.writeGeneratedProject(projectId, generatedProject.files);
+    
+    // Now that files are written, install dependencies
+    console.log("\n-----------------------------------");
+    console.log("Installing Dependencies");
+    console.log("-----------------------------------");
+    
+    const packageManager = architecturePlan.stack.packageManager ?? "npm";
+    const installCommand = generatedProject.commands.install ?? `${packageManager} install`;
+    
+    const tInstallStart = performance.now();
+    const installResult = await runtimeManagerService.installDependencies(projectId, installCommand);
+    
+    if (!installResult.success) {
+      throw new Error(`Dependency installation failed: ${installResult.stderr}`);
+    }
+    console.log(`[Runtime] Dependencies Installed (${(performance.now() - tInstallStart).toFixed(0)}ms)`);
+    
+    project.status = "ready";
+    await project.save();
     
     const syncTime = performance.now() - startSync;
 
@@ -155,8 +169,8 @@ export async function generateProject(owner: string, projectId: string) {
 
     console.log("\n===================================");
     console.log(`AI Branch: ${aiTime.toFixed(0)}ms`);
-    console.log(`Runtime Branch: ${runtimeTime.toFixed(0)}ms`);
-    console.log(`Synchronization: ${syncTime.toFixed(0)}ms`);
+    console.log(`Runtime Prep: ${runtimeTime.toFixed(0)}ms`);
+    console.log(`Synchronization & Install: ${syncTime.toFixed(0)}ms`);
     console.log(`Total Pipeline: ${totalTime.toFixed(0)}ms`);
     console.log("===================================\n");
 

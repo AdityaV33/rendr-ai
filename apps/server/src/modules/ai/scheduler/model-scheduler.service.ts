@@ -34,7 +34,11 @@ export class ModelSchedulerService {
         activeRequests: 0,
         successCount: 0,
         failureCount: 0,
+        timeoutCount: 0,
+        rateLimitCount: 0,
         averageLatencyMs: 0,
+        averageAcquireTimeMs: 0,
+        acquireCalls: 0,
         consecutiveFailures: 0,
         cooldownExpiryTimestamp: null,
       });
@@ -57,6 +61,54 @@ export class ModelSchedulerService {
         }
       }
     }
+  }
+
+  public getHealthyModelCount(): number {
+    this.refreshCooldowns();
+    return Array.from(this.models.values()).filter(m => m.status === "available").length;
+  }
+
+  public getMetrics() {
+    let successfulRequests = 0;
+    let failureCount = 0;
+    let timeouts = 0;
+    let rateLimits = 0;
+    let totalAcquireTime = 0;
+    let acquireCalls = 0;
+    let totalGenerationTime = 0;
+    let slowestModel = "";
+    let fastestModel = "";
+    let slowestTime = 0;
+    let fastestTime = Infinity;
+
+    for (const model of this.models.values()) {
+      successfulRequests += model.successCount;
+      failureCount += model.failureCount;
+      timeouts += model.timeoutCount;
+      rateLimits += model.rateLimitCount;
+      totalAcquireTime += (model.averageAcquireTimeMs * model.acquireCalls);
+      acquireCalls += model.acquireCalls;
+      
+      if (model.averageLatencyMs > slowestTime && model.successCount > 0) {
+        slowestTime = model.averageLatencyMs;
+        slowestModel = model.name;
+      }
+      if (model.averageLatencyMs < fastestTime && model.successCount > 0) {
+        fastestTime = model.averageLatencyMs;
+        fastestModel = model.name;
+      }
+    }
+
+    return {
+      successfulRequests,
+      failureCount,
+      timeouts,
+      rateLimits,
+      averageAcquireTimeMs: acquireCalls > 0 ? totalAcquireTime / acquireCalls : 0,
+      slowestModel,
+      fastestModel,
+      averageGenerationTime: successfulRequests > 0 ? Array.from(this.models.values()).reduce((acc, m) => acc + (m.averageLatencyMs * m.successCount), 0) / successfulRequests : 0
+    };
   }
 
   /**
@@ -114,7 +166,7 @@ export class ModelSchedulerService {
     }
   }
 
-  public reportSuccess(modelName: string, durationMs: number) {
+  public reportSuccess(modelName: string, durationMs: number, acquireDurationMs: number = 0) {
     const model = this.models.get(modelName);
     if (!model) return;
 
@@ -123,6 +175,13 @@ export class ModelSchedulerService {
     model.consecutiveFailures = 0; // Reset consecutive failures on success
     model.status = "available";
     model.cooldownExpiryTimestamp = null;
+    
+    model.acquireCalls += 1;
+    if (model.averageAcquireTimeMs === 0) {
+      model.averageAcquireTimeMs = acquireDurationMs;
+    } else {
+      model.averageAcquireTimeMs = (model.averageAcquireTimeMs * 0.8) + (acquireDurationMs * 0.2);
+    }
 
     // Moving average (simple)
     if (model.averageLatencyMs === 0) {
@@ -132,12 +191,19 @@ export class ModelSchedulerService {
     }
   }
 
-  public reportFailure(modelName: string, error: unknown) {
+  public reportFailure(modelName: string, error: unknown, acquireDurationMs: number = 0) {
     const model = this.models.get(modelName);
     if (!model) return;
 
     model.activeRequests = Math.max(0, model.activeRequests - 1);
     model.failureCount += 1;
+    
+    model.acquireCalls += 1;
+    if (model.averageAcquireTimeMs === 0) {
+      model.averageAcquireTimeMs = acquireDurationMs;
+    } else {
+      model.averageAcquireTimeMs = (model.averageAcquireTimeMs * 0.8) + (acquireDurationMs * 0.2);
+    }
 
     // Determine if error is transient
     const isTimeout = error instanceof Error && error.message === "Request timed out";
@@ -156,22 +222,38 @@ export class ModelSchedulerService {
     if (isTransient) {
       model.consecutiveFailures += 1;
       
-      // Exponential backoff
-      const multiplier = Math.pow(2, model.consecutiveFailures - 1); // 1st = 1, 2nd = 2, 3rd = 4...
-      let cooldownMs = this.baseCooldownMs * multiplier;
-      cooldownMs = Math.min(cooldownMs, this.maxCooldownMs);
-
-      model.status = "coolingDown";
-      model.cooldownExpiryTimestamp = Date.now() + cooldownMs;
-
+      let cooldownMs = 0;
       let reason = "Unknown transient error";
-      if (isRateLimit) reason = "429 Quota Exceeded / Rate Limited";
-      else if (isNotFound) reason = "404 Model Unavailable / Deprecated";
-      else if (isServerFailure) reason = `${status} Server Error`;
-      else if (isTimeout) reason = "Request Timeout";
-      else if (isNetworkFailure) reason = "Network Failure";
 
-      console.warn(`[Scheduler] Model ${modelName} encountered transient failure: ${reason}. Cooldown applied: ${cooldownMs / 1000}s`);
+      if (isRateLimit) {
+        model.rateLimitCount += 1;
+        reason = "429 Quota Exceeded / Rate Limited";
+        // Exponential backoff
+        const multiplier = Math.pow(2, model.consecutiveFailures - 1); // 1st = 1, 2nd = 2, 3rd = 4...
+        cooldownMs = Math.min(this.baseCooldownMs * multiplier, this.maxCooldownMs);
+      } else if (isServerFailure) {
+        reason = `${status} Server Error`;
+        // Short cooldown for 500s
+        cooldownMs = 2000;
+      } else if (isTimeout) {
+        model.timeoutCount += 1;
+        reason = "Request Timeout";
+        // No cooldown
+      } else if (isNetworkFailure) {
+        reason = "Network Failure";
+        // No cooldown
+      } else if (isNotFound) {
+        reason = "404 Model Unavailable / Deprecated";
+        cooldownMs = this.maxCooldownMs; // effectively disable it
+      }
+
+      if (cooldownMs > 0) {
+        model.status = "coolingDown";
+        model.cooldownExpiryTimestamp = Date.now() + cooldownMs;
+        console.warn(`[Scheduler] Model ${modelName} encountered transient failure: ${reason}. Cooldown applied: ${cooldownMs / 1000}s`);
+      } else {
+        console.warn(`[Scheduler] Model ${modelName} encountered transient failure: ${reason}. No cooldown applied, immediately failing over.`);
+      }
     } else {
       // For non-transient failures (validation, etc.), we don't cool down the model.
       // The model itself is fine, the request was just bad.

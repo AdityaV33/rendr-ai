@@ -15,6 +15,8 @@ export type GraphEventType =
   | "architect_started" | "architect_completed"
   | "generator_started" | "generator_completed"
   | "validator_started" | "validator_completed"
+  | "repair_started" | "repair_completed"
+  | "gate_runner_started" | "gate_runner_completed"
   | "graph_started" | "graph_completed";
 import type { GenerationState } from "./state.js";
 
@@ -29,11 +31,9 @@ export type GraphNodeName =
   | "planner"
   | "architect"
   | "generator"
-  | "validator"
+  | "sanityGate"
+  | "gateRunner"
   | "workspace"
-  | "build"
-  | "errorAnalyzer"
-  | "repair"
   | "preview";
 
 export interface GenerationStep {

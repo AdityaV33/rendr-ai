@@ -154,7 +154,13 @@ export async function startPreview(
     );
 
     child.stdout?.on('data', (data) => console.log(`[Preview stdout]: ${data.toString()}`));
-    child.stderr?.on('data', (data) => console.error(`[Preview stderr]: ${data.toString()}`));
+    child.stderr?.on('data', (data) => {
+      const msg = data.toString();
+      if (msg.includes("The server is being restarted or closed") || msg.includes("plugin vite:dep-scan")) {
+        return; // Suppress expected Vite/esbuild restart noise
+      }
+      console.error(`[Preview stderr]: ${msg}`);
+    });
 
 
 
