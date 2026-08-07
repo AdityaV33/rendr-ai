@@ -14,6 +14,9 @@ export const projectPlanSchema = z.object({
   /** High-level application category (e.g., "SaaS Dashboard", "E-commerce Store") */
   applicationType: z.string(),
 
+  /** Framework selection (Defaults to React) */
+  frontendFramework: z.enum(["react-vite", "vanilla-js"]).describe("The framework the application must be built in. Use 'react-vite' by default, or 'vanilla-js' if the user explicitly requests Vanilla JavaScript."),
+
   /** One-sentence purpose statement */
   purpose: z.string(),
 
@@ -22,6 +25,19 @@ export const projectPlanSchema = z.object({
 
   /** Core product features */
   features: z.array(z.string()),
+
+  futureRefinements: z
+    .array(z.string())
+    .describe(
+      "Potential features or improvements that are not required for this MVP, but may be added later",
+    ),
+
+  deferredWorkflows: z
+    .array(z.string())
+    .describe(
+      "High-level workflows or pages explicitly requested by the user that were intentionally deferred to respect the core MVP and architectural budget",
+    )
+    .optional(),
 
   /** Pages the application needs */
   pages: z.array(

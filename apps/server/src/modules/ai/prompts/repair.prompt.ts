@@ -23,7 +23,10 @@ Your task is to fix the errors by providing the corrected source code for any fi
 Rules:
 1. Fix ONLY the reported errors. Do not redesign the application.
 2. Provide the COMPLETE file content for any file you modify. Do not provide partial snippets.
-3. Only return the files that actually need changes.`;
+3. Only return the files that actually need changes.
+4. STRICT FRAMEWORK BOUNDARY:
+   - If Framework is 'vanilla' or 'vanilla-js', NEVER output React, JSX, Hooks, or Providers. Provide plain HTML, CSS, and JS.
+   - If Framework is 'react-vite', NEVER provide vanilla DOM manipulation (e.g. document.getElementById) unless strictly necessary.`;
 
   const prompt = `The project just failed the ${gateName} gate.
 

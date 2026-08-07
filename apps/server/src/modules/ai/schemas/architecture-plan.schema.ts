@@ -16,7 +16,7 @@ export const architecturePlanSchema = z.object({
   /** Core technology stack decisions */
   stack: z.object({
     language: z.string().describe("e.g., 'TypeScript', 'JavaScript'"),
-    frontendFramework: z.string().describe("e.g., 'React', 'Vue', 'Vanilla JS'"),
+    frontendFramework: z.enum(["react-vite", "vanilla-js"]).describe("Must match the ProjectPlan framework selection."),
     buildTool: z.string().describe("e.g., 'Vite', 'Next.js', 'Webpack'"),
     packageManager: z.string().describe("e.g., 'npm', 'yarn', 'pnpm'"),
   }),

@@ -6,6 +6,7 @@ import { runProcess } from "../../../runtime/process.service.js";
 import { getWorkspacePath } from "../../../runtime/workspace.service.js";
 import { writeGeneratedProject } from "../../../runtime/workspace-file.service.js";
 import { startPreviewOnly } from "../../../runtime/runtime-manager.service.js";
+import { initializeRuntime, hasRuntime } from "../../../runtime/runtime.service.js";
 
 export class GateRunnerNode {
   constructor(
@@ -57,85 +58,94 @@ export class GateRunnerNode {
       return runProcess(cmd, args, { cwd: workspacePath });
     };
 
-    // 2. Compile Gate (Max 2 repairs)
-    let compileResult = await runCompile();
-    let compileAttempts = 0;
-    while (!compileResult.success && compileAttempts < 2) {
-      compileAttempts++;
-      currentState.gateAttempts['compile'] = compileAttempts;
-      console.log(`[GateRunner] Compile failed. Triggering repair attempt ${compileAttempts}...`);
+    // Global Repair Budget
+    let totalRepairAttempts = 0;
+    const maxRepairAttempts = 3;
+    let totalRepairTimeMs = 0;
+    const maxRepairTimeMs = 90_000;
+
+    const executeRepair = async (gate: string, errorOutput: string) => {
+      if (totalRepairAttempts >= maxRepairAttempts) {
+        throw new Error(`Repair budget exhausted (max ${maxRepairAttempts} attempts).`);
+      }
+      if (totalRepairTimeMs >= maxRepairTimeMs) {
+        throw new Error(`Repair budget exhausted (max ${maxRepairTimeMs}ms).`);
+      }
+      
+      totalRepairAttempts++;
+      currentState.gateAttempts![gate.toLowerCase()] = (currentState.gateAttempts![gate.toLowerCase()] || 0) + 1;
+      
+      console.log(`[GateRunner] ${gate} failed. Triggering repair attempt ${totalRepairAttempts}...`);
       
       emit("repair_started");
       const startRepair = performance.now();
-      await this.repairEngine.executeGateRepair(
-        currentState, 
-        "Compile", 
-        compileResult.stdout + "\n" + compileResult.stderr
-      );
-      emit("repair_completed", performance.now() - startRepair);
+      await this.repairEngine.executeGateRepair(currentState, gate, errorOutput);
+      const repairDuration = performance.now() - startRepair;
+      totalRepairTimeMs += repairDuration;
+      emit("repair_completed", repairDuration);
       
       await writeGeneratedProject(currentState.project.id, currentState.generatedFiles!.files);
-      compileResult = await runCompile();
+    };
+
+    const extractTscErrors = (output: string) => {
+      // Basic extraction of file and error message to make repair more deterministic
+      const lines = output.split('\\n');
+      const errorLines = lines.filter(l => l.includes('error TS'));
+      return errorLines.length > 0 ? errorLines.join('\\n') : output;
+    };
+
+    // 2. Compile Gate
+    const framework = currentState.architecture?.stack?.frontendFramework;
+    if (framework !== "vanilla-js") {
+      let compileResult = await runCompile();
+      while (!compileResult.success) {
+        try {
+          await executeRepair("Compile", extractTscErrors(compileResult.stdout + "\\n" + compileResult.stderr));
+          compileResult = await runCompile();
+        } catch (err: any) {
+          console.error(`[GateRunner] Compile gate failed: ${err.message}`);
+          currentState.errors.push("Compile failed: " + compileResult.stdout);
+          currentState.validationResult = { passed: false, issues: [{ type: "typecheck", severity: "error", message: compileResult.stdout, file: "project", repairStrategy: "modify-file" }] };
+          return currentState;
+        }
+      }
     }
 
-    if (!compileResult.success) {
-      console.error("[GateRunner] Compile gate failed after max repairs.");
-      currentState.errors.push("Compile failed: " + compileResult.stdout);
-      return currentState;
-    }
-
-    // 3. Build Gate (Max 1 repair)
+    // 3. Build Gate
     let buildResult = await runBuild();
-    let buildAttempts = 0;
-    while (!buildResult.success && buildAttempts < 1) {
-      buildAttempts++;
-      currentState.gateAttempts['build'] = buildAttempts;
-      console.log(`[GateRunner] Build failed. Triggering repair attempt ${buildAttempts}...`);
-      
-      emit("repair_started");
-      const startRepair = performance.now();
-      await this.repairEngine.executeGateRepair(
-        currentState, 
-        "Build", 
-        buildResult.stdout + "\n" + buildResult.stderr
-      );
-      emit("repair_completed", performance.now() - startRepair);
-      
-      await writeGeneratedProject(currentState.project.id, currentState.generatedFiles!.files);
-      buildResult = await runBuild();
-    }
-
-    if (!buildResult.success) {
-      console.error("[GateRunner] Build gate failed after max repairs.");
-      currentState.errors.push("Build failed: " + buildResult.stdout);
-      return currentState;
+    while (!buildResult.success) {
+      try {
+        await executeRepair("Build", buildResult.stdout + "\\n" + buildResult.stderr);
+        buildResult = await runBuild();
+      } catch (err: any) {
+        console.error(`[GateRunner] Build gate failed: ${err.message}`);
+        currentState.errors.push("Build failed: " + buildResult.stdout);
+        currentState.validationResult = { passed: false, issues: [{ type: "typecheck", severity: "error", message: buildResult.stdout, file: "project", repairStrategy: "modify-file" }] };
+        return currentState;
+      }
     }
 
     // 4. Runtime / Preview Gate
     const devCmd = currentState.generatedFiles?.commands.dev || "npm run dev";
     try {
+      if (!hasRuntime(currentState.project.id)) {
+        initializeRuntime(currentState.project.id);
+      }
+      
       console.log(`[GateRunner] Launching preview...`);
       const runtimeState = await startPreviewOnly(currentState.project.id, devCmd);
-      if (runtimeState.preview) {
+      if (runtimeState?.preview) {
         currentState.previewUrl = runtimeState.preview.url;
       }
     } catch (err: any) {
+      // Runtime repair should only trigger if the server genuinely failed to start within the timeout
+      // and we still have repair budget.
       console.error("[GateRunner] Preview crashed. Triggering runtime repair...");
-      currentState.gateAttempts['runtime'] = 1;
-      
-      emit("repair_started");
-      const startRepair = performance.now();
-      await this.repairEngine.executeGateRepair(
-        currentState, 
-        "Runtime", 
-        err.message || "Unknown runtime crash"
-      );
-      emit("repair_completed", performance.now() - startRepair);
-      
-      await writeGeneratedProject(currentState.project.id, currentState.generatedFiles!.files);
       try {
+        await executeRepair("Runtime", err.message || "Unknown runtime crash");
+        
         const retryState = await startPreviewOnly(currentState.project.id, devCmd);
-        if (retryState.preview) {
+        if (retryState?.preview) {
           currentState.previewUrl = retryState.preview.url;
         }
       } catch (retryErr: any) {

@@ -24,7 +24,7 @@ export class AiService {
     this.graph = createGenerationGraph(this.gemini);
   }
 
-  async generate(data: { prompt?: string, onEvent?: (event: import("./graph/types.js").GraphEvent) => void }): Promise<{ projectPlan: ProjectPlan; architecturePlan: ArchitecturePlan; generatedProject: GeneratedProject }> {
+  async generate(data: { prompt?: string, projectId?: string, onEvent?: (event: import("./graph/types.js").GraphEvent) => void }): Promise<{ projectPlan: ProjectPlan; architecturePlan: ArchitecturePlan; generatedProject: GeneratedProject; metrics: any }> {
     if (!data.prompt) {
       throw new BadRequestError("A prompt is required.");
     }
@@ -33,7 +33,7 @@ export class AiService {
     const initialState: GenerationState = {
       prompt: data.prompt,
       project: {
-        id: crypto.randomUUID(),
+        id: data.projectId || crypto.randomUUID(),
         framework: "",
       },
       gateAttempts: {},
@@ -49,6 +49,7 @@ export class AiService {
         validationMs: 0,
         repairMs: 0,
         totalMs: 0,
+        architectRetries: 0,
       }
     };
 
@@ -105,8 +106,9 @@ GateRunner:             ${(finalState.metrics.validationMs / 1000).toFixed(1)} s
     return { 
       projectPlan: finalState.plan, 
       architecturePlan: finalState.architecture, 
-      generatedProject: finalState.generatedFiles 
-    };
+      generatedProject: finalState.generatedFiles,
+      metrics: finalState.metrics
+    } as unknown as { projectPlan: ProjectPlan; architecturePlan: ArchitecturePlan; generatedProject: GeneratedProject; metrics: any };
   }
 
   async refine(_data: unknown) {

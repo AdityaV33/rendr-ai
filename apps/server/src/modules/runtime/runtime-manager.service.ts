@@ -79,8 +79,6 @@ export async function startPreviewOnly(
     runtimeService.updateRuntimeStatus(projectId, RuntimeStatus.READY);
     console.log("[Runtime] Preview Ready");
 
-    await projectService.updateProjectStatus(projectId, "ready");
-
     return runtimeService.getRuntimeState(projectId)!;
   } catch (error) {
     runtimeService.removeRuntime(projectId);

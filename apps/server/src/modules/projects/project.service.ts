@@ -83,7 +83,6 @@ export async function generateProject(owner: string, projectId: string) {
   project.status = "generating";
   await project.save();
 
-  let runtimePrepPromise: Promise<void> | null = null;
   let runtimeTime = 0;
   const startOverall = performance.now();
 
@@ -92,25 +91,19 @@ export async function generateProject(owner: string, projectId: string) {
   console.log("===================================");
 
   try {
-    const { projectPlan, architecturePlan, generatedProject } = await aiService.generate({ 
+    const { projectPlan, architecturePlan, generatedProject, metrics } = await aiService.generate({ 
       prompt: project.prompt,
+      projectId: projectId,
       onEvent: (event) => {
         if (event.type === "architect_completed" && event.state.architecture) {
           console.log("\n-----------------------------------");
           console.log("Runtime Branch Started");
           console.log("-----------------------------------");
           
-          const framework = event.state.architecture.stack.frontendFramework;
-          const packageManager = event.state.architecture.stack.packageManager ?? "npm";
-          const installCommand = `${packageManager} install`;
-          
           const startRuntime = performance.now();
-          runtimePrepPromise = runtimeManagerService.prepareWorkspace(
-            projectId, 
-            framework
-          ).then(() => {
-            runtimeTime = performance.now() - startRuntime;
-          });
+          // We no longer call prepareWorkspace (copyTemplate) here to avoid a race condition 
+          // with GeneratorV2's parallel pnpm install.
+          runtimeTime = performance.now() - startRuntime;
         }
       }
     });
@@ -123,9 +116,7 @@ export async function generateProject(owner: string, projectId: string) {
 
     console.log("\n[Pipeline] Synchronizing Runtime Workspace");
 
-    if (runtimePrepPromise) {
-      await runtimePrepPromise; // If runtime failed, this will throw
-    }
+    console.log("\n[Pipeline] Synchronizing Runtime Workspace");
 
     const startSync = performance.now();
 
@@ -135,38 +126,42 @@ export async function generateProject(owner: string, projectId: string) {
     
     project.files = generatedProject.files.map(f => f.path);
     project.framework = generatedProject.project.framework as import("./project.model.js").ProjectFramework;
-    project.status = "building";
-
-    await project.save();
-
-    await workspaceFileService.writeGeneratedProject(projectId, generatedProject.files);
-    
-    // Now that files are written, install dependencies
-    console.log("\n-----------------------------------");
-    console.log("Installing Dependencies");
-    console.log("-----------------------------------");
-    
-    const packageManager = architecturePlan.stack.packageManager ?? "npm";
-    const installCommand = generatedProject.commands.install ?? `${packageManager} install`;
-    
-    const tInstallStart = performance.now();
-    const installResult = await runtimeManagerService.installDependencies(projectId, installCommand);
-    
-    if (!installResult.success) {
-      throw new Error(`Dependency installation failed: ${installResult.stderr}`);
-    }
-    console.log(`[Runtime] Dependencies Installed (${(performance.now() - tInstallStart).toFixed(0)}ms)`);
-    
     project.status = "ready";
+
     await project.save();
     
     const syncTime = performance.now() - startSync;
 
-    console.log("[Runtime] Preview Started");
-    await runtimeManagerService.startPreviewOnly(projectId, generatedProject.commands.dev);
+    // The GateRunnerNode will exclusively handle starting the preview and populating runtimeState.
+    const runtimeState = runtimeManagerService.getRuntimeState(projectId);
+    if (runtimeState?.preview) {
+      console.log("[Runtime] Preview Started");
+    } else {
+      console.log("[Runtime] Preview Failed to Start");
+    }
 
     const totalTime = performance.now() - startOverall;
+    
+    // Telemetry Calculations
+    const aiFiles = generatedProject.files.filter(f => !f.path.includes('node_modules') && f.content && f.content.length > 0);
+    const aiFileCount = aiFiles.length;
+    const largestFile = aiFiles.reduce((max, f) => f.content!.length > (max.content?.length || 0) ? f : max, {} as any);
+    const avgFileSize = aiFiles.reduce((sum, f) => sum + f.content!.length, 0) / (aiFileCount || 1);
+    const requestedFeatures = projectPlan.features.length;
+    const implementedWorkflows = projectPlan.pages.length;
+    const deferredWorkflows = projectPlan.deferredWorkflows?.length || 0;
 
+    console.log("\n===================================");
+    console.log("Telemetry & Benchmarks");
+    console.log("===================================");
+    console.log(`Architecture Complexity: ${projectPlan.complexity}`);
+    console.log(`Requested features: ${requestedFeatures}`);
+    console.log(`Implemented workflows: ${implementedWorkflows}`);
+    console.log(`Deferred workflows: ${deferredWorkflows}`);
+    console.log(`AI file count: ${aiFileCount}`);
+    console.log(`Average file size: ${(avgFileSize / 1024).toFixed(1)} KB`);
+    console.log(`Largest generated file: ${largestFile.path} (${((largestFile.content?.length || 0) / 1024).toFixed(1)} KB)`);
+    console.log(`Architecture retries: ${metrics?.architectRetries || 0}`);
     console.log("\n===================================");
     console.log(`AI Branch: ${aiTime.toFixed(0)}ms`);
     console.log(`Runtime Prep: ${runtimeTime.toFixed(0)}ms`);

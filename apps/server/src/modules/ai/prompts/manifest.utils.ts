@@ -58,5 +58,24 @@ export function buildArchitectureManifest(
     manifest += `Allowed npm packages:\n${npmPackages.join("\n")}\n\n`;
   }
 
+  if (architecturePlan.behavioralContracts && architecturePlan.behavioralContracts.length > 0) {
+    manifest += `Global Behavioral Contracts:\n`;
+    for (const bc of architecturePlan.behavioralContracts) {
+      manifest += `File: ${bc.file}\n`;
+      if (bc.responsibilities && bc.responsibilities.length > 0) {
+        manifest += `  Responsibilities: ${bc.responsibilities.join(", ")}\n`;
+      }
+      if (bc.behaviorRules && bc.behaviorRules.length > 0) {
+        for (const rule of bc.behaviorRules) {
+          manifest += `  - Trigger [${rule.trigger}]: ${rule.action}\n`;
+          if (rule.assertions && rule.assertions.length > 0) {
+             manifest += `    Expect: ${rule.assertions.join(", ")}\n`;
+          }
+        }
+      }
+    }
+    manifest += `\n`;
+  }
+
   return manifest;
 }

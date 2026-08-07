@@ -1,0 +1,272 @@
+{
+  "projectPlan": {
+    "applicationType": "Personal Finance Tracker",
+    "frontendFramework": "vanilla-js",
+    "purpose": "To provide a simple, local-first tool for users to track their income and expenses, visualize their spending habits, and manage their financial transactions.",
+    "targetAudience": "Individuals looking for a lightweight, privacy-focused way to manage personal finances without cloud dependencies.",
+    "features": [
+      "Dashboard with summary cards for Balance, Income, and Expenses",
+      "Add, Edit, and Delete transactions",
+      "Transaction search functionality",
+      "Category-based filtering",
+      "Data persistence using browser LocalStorage",
+      "Visual charts for income vs expenses",
+      "Responsive mobile-first design"
+    ],
+    "futureRefinements": [
+      "Export data to CSV",
+      "Recurring transaction automation",
+      "Budget goal setting",
+      "Dark mode toggle",
+      "Data import from bank statements"
+    ],
+    "deferredWorkflows": [
+      "User authentication and cloud sync",
+      "Multi-currency support",
+      "Advanced reporting and analytics dashboard"
+    ],
+    "pages": [
+      {
+        "name": "Dashboard",
+        "route": "index.html",
+        "description": "Main view displaying summary cards, transaction list with search/filter, and a visual chart."
+      }
+    ],
+    "components": [
+      {
+        "name": "SummaryCards",
+        "description": "Displays total balance, total income, and total expenses."
+      },
+      {
+        "name": "TransactionForm",
+        "description": "Modal component for adding or editing transaction details."
+      },
+      {
+        "name": "TransactionList",
+        "description": "Table or list view of transactions with search and filter controls."
+      },
+      {
+        "name": "FinanceChart",
+        "description": "Canvas-based chart rendering income vs expense data."
+      }
+    ],
+    "theme": {
+      "style": "clean and modern",
+      "primaryColor": "#2563eb",
+      "secondaryColor": "#10b981",
+      "fontFamily": "Inter, sans-serif"
+    },
+    "requiresAuth": false,
+    "responsive": true,
+    "accessible": true,
+    "requiresTests": false,
+    "complexity": "medium"
+  },
+  "architecturePlan": {
+    "stack": {
+      "language": "JavaScript",
+      "frontendFramework": "vanilla-js",
+      "buildTool": "Vite",
+      "packageManager": "pnpm"
+    },
+    "strategies": [
+      "Tailwind CSS",
+      "LocalStorage",
+      "PubSub Pattern"
+    ],
+    "dependencies": [
+      {
+        "name": "chart.js",
+        "version": "^4.4.0",
+        "isDev": false,
+        "reason": "Canvas-based rendering for income vs expense visualization"
+      }
+    ],
+    "fileStructure": [
+      {
+        "path": "index.html",
+        "purpose": "Base application shell with containers for SummaryCards, TransactionList, and FinanceChart, plus the Add Transaction button.",
+        "type": "file"
+      },
+      {
+        "path": "src/main.js",
+        "purpose": "Root composition file. Manages global state (transactions array), listens to custom events, and orchestrates UI updates.",
+        "type": "file",
+        "allowedImports": [
+          "src/components/SummaryCards.js",
+          "src/components/TransactionList.js",
+          "src/components/TransactionForm.js",
+          "src/components/FinanceChart.js"
+        ]
+      },
+      {
+        "path": "src/components/SummaryCards.js",
+        "purpose": "Displays balance, income, and expense totals.",
+        "type": "file"
+      },
+      {
+        "path": "src/components/TransactionList.js",
+        "purpose": "Renders transaction table with search and category filtering.",
+        "type": "file"
+      },
+      {
+        "path": "src/components/TransactionForm.js",
+        "purpose": "Modal component for creating or editing transactions.",
+        "type": "file"
+      },
+      {
+        "path": "src/components/FinanceChart.js",
+        "purpose": "Canvas-based chart rendering using Chart.js.",
+        "type": "file",
+        "allowedImports": [
+          "chart.js"
+        ]
+      }
+    ],
+    "componentContracts": [
+      {
+        "name": "SummaryCards",
+        "importPath": "./src/components/SummaryCards.js",
+        "exportType": "named",
+        "exports": [
+          "renderSummaryCards"
+        ],
+        "props": []
+      },
+      {
+        "name": "TransactionList",
+        "importPath": "./src/components/TransactionList.js",
+        "exportType": "named",
+        "exports": [
+          "renderTransactionList"
+        ],
+        "props": []
+      },
+      {
+        "name": "TransactionForm",
+        "importPath": "./src/components/TransactionForm.js",
+        "exportType": "named",
+        "exports": [
+          "openTransactionModal"
+        ],
+        "props": []
+      },
+      {
+        "name": "FinanceChart",
+        "importPath": "./src/components/FinanceChart.js",
+        "exportType": "named",
+        "exports": [
+          "renderFinanceChart"
+        ],
+        "props": []
+      }
+    ],
+    "behavioralContracts": [
+      {
+        "file": "src/main.js",
+        "responsibilities": [
+          "Maintain global transactions state",
+          "Persist state to LocalStorage",
+          "Orchestrate component re-renders via PubSub"
+        ],
+        "behaviorRules": [
+          {
+            "trigger": "CustomEvent 'add-transaction'",
+            "preconditions": [
+              "Form data is valid"
+            ],
+            "action": "Update transactions array and save to LocalStorage",
+            "assertions": [
+              "UI components re-render",
+              "LocalStorage updated"
+            ]
+          },
+          {
+            "trigger": "CustomEvent 'delete-transaction'",
+            "preconditions": [
+              "Transaction ID exists"
+            ],
+            "action": "Remove transaction from state",
+            "assertions": [
+              "UI components re-render",
+              "LocalStorage updated"
+            ]
+          }
+        ],
+        "acceptanceCriteria": [
+          "Transactions persist on refresh",
+          "Summary cards update on add/delete",
+          "Chart reflects current data"
+        ]
+      }
+    ]
+  },
+  "generatedProject": {
+    "files": [
+      {
+        "path": "package.json",
+        "content": "{\n  \"name\": \"personal-finance-tracker\",\n  \"version\": \"0.0.0\",\n  \"private\": true,\n  \"type\": \"module\",\n  \"scripts\": {\n    \"dev\": \"vite\",\n    \"build\": \"vite build\",\n    \"preview\": \"vite preview\"\n  },\n  \"dependencies\": {\n    \"chart.js\": \"^4.4.0\"\n  },\n  \"devDependencies\": {\n    \"vite\": \"^6.0.0\",\n    \"@playwright/test\": \"^1.40.0\"\n  }\n}"
+      },
+      {
+        "path": ".gitignore",
+        "content": "node_modules/\ndist/\n.env\n.env.*\n!.env.example\n.DS_Store\nThumbs.db"
+      },
+      {
+        "path": "README.md",
+        "content": "# personal-finance-tracker\n\nThis is a generated frontend MVP built with Vanilla HTML/CSS/JS and Vite.\n\n## Getting Started\n\n1. Install dependencies:\n   ```bash\n   pnpm install\n   ```\n2. Run the development server:\n   ```bash\n   pnpm run dev\n   ```"
+      },
+      {
+        "path": ".env.example",
+        "content": "# Public API Keys (must be prefixed with VITE_)\nVITE_API_URL=http://localhost:3000"
+      },
+      {
+        "path": "index.html",
+        "content": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    <title>Finance Tracker</title>\n    <script src=\"https://cdn.tailwindcss.com\"></script>\n</head>\n<body class=\"bg-gray-100 min-h-screen p-4 md:p-8\">\n    <div class=\"max-w-6xl mx-auto\">\n        <header class=\"flex justify-between items-center mb-8\">\n            <h1 class=\"text-3xl font-bold text-gray-800\">Finance Dashboard</h1>\n            <button id=\"add-transaction-btn\" class=\"bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-semibold transition\">\n                + Add Transaction\n            </button>\n        </header>\n\n        <main class=\"grid grid-cols-1 lg:grid-cols-3 gap-8\">\n            <div class=\"lg:col-span-3\" id=\"summarycards-container\"></div>\n            \n            <div class=\"lg:col-span-2 bg-white p-6 rounded-xl shadow-sm\">\n                <div id=\"transactionlist-container\"></div>\n            </div>\n\n            <div class=\"bg-white p-6 rounded-xl shadow-sm\">\n                <div id=\"financechart-container\"></div>\n            </div>\n        </main>\n    </div>\n\n    <script type=\"module\" src=\"src/main.js\"></script>\n</body>\n</html>"
+      },
+      {
+        "path": "styles.css",
+        "content": "body {\n  margin: 0;\n  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;\n  background-color: #f9fafb;\n  color: #111827;\n  display: flex;\n  justify-content: center;\n  align-items: center;\n  min-height: 100vh;\n}\n\n#app {\n  text-align: center;\n  padding: 2rem;\n  background: white;\n  border-radius: 12px;\n  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);\n  width: 100%;\n  max-width: 1200px;\n}"
+      },
+      {
+        "path": "src/main.js",
+        "content": "import { renderSummaryCards } from './components/SummaryCards.js';\nimport { renderTransactionList } from './components/TransactionList.js';\nimport { openTransactionModal } from './components/TransactionForm.js';\nimport { renderFinanceChart } from './components/FinanceChart.js';\n\nlet transactions = JSON.parse(localStorage.getItem('transactions')) || [];\n\nconst saveState = () => {\n    localStorage.setItem('transactions', JSON.stringify(transactions));\n};\n\nconst updateUI = () => {\n    const summaryContainer = document.getElementById('summarycards-container');\n    const listContainer = document.getElementById('transactionlist-container');\n    const chartContainer = document.getElementById('financechart-container');\n\n    if (summaryContainer) renderSummaryCards(transactions, summaryContainer);\n    if (listContainer) renderTransactionList(transactions, listContainer);\n    if (chartContainer) renderFinanceChart(transactions, chartContainer);\n};\n\nwindow.addEventListener('add-transaction', (e) => {\n    const newTransaction = {\n        ...e.detail,\n        id: Date.now()\n    };\n    transactions.push(newTransaction);\n    saveState();\n    updateUI();\n});\n\nwindow.addEventListener('delete-transaction', (e) => {\n    const id = parseInt(e.detail.id);\n    transactions = transactions.filter(t => t.id !== id);\n    saveState();\n    updateUI();\n});\n\ndocument.addEventListener('DOMContentLoaded', () => {\n    const addBtn = document.getElementById('add-transaction-btn');\n    if (addBtn) {\n        addBtn.addEventListener('click', () => {\n            openTransactionModal();\n        });\n    }\n\n    updateUI();\n});\n\nexport { transactions };"
+      },
+      {
+        "path": "src/components/SummaryCards.js",
+        "content": "export function renderSummaryCards(transactions) {\n  const container = document.getElementById('summarycards-container');\n  if (!container) return;\n\n  const income = transactions\n    .filter(t => t.type === 'income')\n    .reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);\n\n  const expense = transactions\n    .filter(t => t.type === 'expense')\n    .reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);\n\n  const balance = income - expense;\n\n  const formatCurrency = (val) => new Intl.NumberFormat('en-US', {\n    style: 'currency',\n    currency: 'USD'\n  }).format(val);\n\n  container.innerHTML = `\n    <div class=\"grid grid-cols-1 md:grid-cols-3 gap-4 mb-6\">\n      <div class=\"bg-white p-6 rounded-lg shadow border-l-4 border-green-500\">\n        <h3 class=\"text-sm font-semibold text-gray-500 uppercase\">Balance</h3>\n        <p class=\"text-2xl font-bold text-gray-800\">${formatCurrency(balance)}</p>\n      </div>\n      <div class=\"bg-white p-6 rounded-lg shadow border-l-4 border-blue-500\">\n        <h3 class=\"text-sm font-semibold text-gray-500 uppercase\">Income</h3>\n        <p class=\"text-2xl font-bold text-green-600\">${formatCurrency(income)}</p>\n      </div>\n      <div class=\"bg-white p-6 rounded-lg shadow border-l-4 border-red-500\">\n        <h3 class=\"text-sm font-semibold text-gray-500 uppercase\">Expenses</h3>\n        <p class=\"text-2xl font-bold text-red-600\">${formatCurrency(expense)}</p>\n      </div>\n    </div>\n  `;\n}"
+      },
+      {
+        "path": "src/components/FinanceChart.js",
+        "content": "import { Chart, registerables } from 'chart.js';\n\nChart.register(...registerables);\n\nlet chartInstance = null;\n\nexport function renderFinanceChart(transactions) {\n  const container = document.getElementById('financechart-container');\n  if (!container) return;\n\n  container.innerHTML = '<canvas id=\"finance-canvas\" class=\"w-full h-64\"></canvas>';\n  const canvas = document.getElementById('finance-canvas');\n\n  const income = transactions\n    .filter(t => t.type === 'income')\n    .reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);\n\n  const expense = transactions\n    .filter(t => t.type === 'expense')\n    .reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);\n\n  if (chartInstance) {\n    chartInstance.destroy();\n  }\n\n  chartInstance = new Chart(canvas, {\n    type: 'doughnut',\n    data: {\n      labels: ['Income', 'Expenses'],\n      datasets: [{\n        data: [income, expense],\n        backgroundColor: ['#10B981', '#EF4444'],\n        borderWidth: 0\n      }]\n    },\n    options: {\n      responsive: true,\n      maintainAspectRatio: false,\n      plugins: {\n        legend: {\n          position: 'bottom'\n        }\n      }\n    }\n  });\n}"
+      },
+      {
+        "path": "src/components/TransactionForm.js",
+        "content": "export function openTransactionModal() {\n  const overlay = document.createElement('div');\n  overlay.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50';\n  \n  const modal = document.createElement('div');\n  modal.className = 'bg-white rounded-lg p-6 w-full max-w-md shadow-xl';\n  modal.innerHTML = `\n    <h2 class=\"text-xl font-bold mb-4\">Add Transaction</h2>\n    <form id=\"transaction-form\" class=\"space-y-4\">\n      <div>\n        <label class=\"block text-sm font-medium text-gray-700\">Description</label>\n        <input type=\"text\" id=\"desc\" required class=\"w-full border rounded p-2 mt-1\">\n      </div>\n      <div>\n        <label class=\"block text-sm font-medium text-gray-700\">Amount</label>\n        <input type=\"number\" id=\"amount\" required step=\"0.01\" class=\"w-full border rounded p-2 mt-1\">\n      </div>\n      <div>\n        <label class=\"block text-sm font-medium text-gray-700\">Type</label>\n        <select id=\"type\" class=\"w-full border rounded p-2 mt-1\">\n          <option value=\"income\">Income</option>\n          <option value=\"expense\">Expense</option>\n        </select>\n      </div>\n      <div class=\"flex justify-end gap-2 mt-6\">\n        <button type=\"button\" id=\"cancel-btn\" class=\"px-4 py-2 text-gray-600\">Cancel</button>\n        <button type=\"submit\" class=\"px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700\">Save</button>\n      </div>\n    </form>\n  `;\n\n  overlay.appendChild(modal);\n  document.body.appendChild(overlay);\n\n  const closeModal = () => overlay.remove();\n\n  overlay.querySelector('#cancel-btn').addEventListener('click', closeModal);\n  \n  modal.querySelector('#transaction-form').addEventListener('submit', (e) => {\n    e.preventDefault();\n    \n    const transaction = {\n      id: Date.now(),\n      description: document.getElementById('desc').value,\n      amount: parseFloat(document.getElementById('amount').value),\n      type: document.getElementById('type').value,\n      date: new Date().toISOString()\n    };\n\n    window.dispatchEvent(new CustomEvent('add-transaction', { detail: transaction }));\n    closeModal();\n  });\n\n  overlay.addEventListener('click', (e) => {\n    if (e.target === overlay) closeModal();\n  });\n}"
+      },
+      {
+        "path": "src/components/TransactionList.js",
+        "content": "export function renderTransactionList(transactions = [], filterQuery = '', filterCategory = 'All') {\n  const container = document.getElementById('transactionlist-container');\n  if (!container) return;\n\n  const filtered = transactions.filter(t => {\n    const matchesQuery = t.description.toLowerCase().includes(filterQuery.toLowerCase());\n    const matchesCategory = filterCategory === 'All' || t.category === filterCategory;\n    return matchesQuery && matchesCategory;\n  });\n\n  let html = `\n    <div class=\"bg-white p-6 rounded-lg shadow-md\">\n      <div class=\"flex gap-4 mb-4\">\n        <input type=\"text\" id=\"search-input\" placeholder=\"Search...\" value=\"${filterQuery}\" class=\"border p-2 rounded w-full\">\n        <select id=\"category-filter\" class=\"border p-2 rounded\">\n          <option value=\"All\">All Categories</option>\n          <option value=\"Income\" ${filterCategory === 'Income' ? 'selected' : ''}>Income</option>\n          <option value=\"Expense\" ${filterCategory === 'Expense' ? 'selected' : ''}>Expense</option>\n        </select>\n      </div>\n      <table class=\"w-full text-left border-collapse\">\n        <thead>\n          <tr class=\"border-b\">\n            <th class=\"py-2\">Description</th>\n            <th class=\"py-2\">Category</th>\n            <th class=\"py-2\">Amount</th>\n            <th class=\"py-2\">Action</th>\n          </tr>\n        </thead>\n        <tbody>\n          ${filtered.map(t => `\n            <tr class=\"border-b\">\n              <td class=\"py-2\">${t.description}</td>\n              <td class=\"py-2\">${t.category}</td>\n              <td class=\"py-2 ${t.category === 'Income' ? 'text-green-600' : 'text-red-600'}\">\n                ${t.category === 'Income' ? '+' : '-'}$${Math.abs(t.amount).toFixed(2)}\n              </td>\n              <td class=\"py-2\">\n                <button data-id=\"${t.id}\" class=\"delete-btn text-red-500 hover:text-red-700\">Delete</button>\n              </td>\n            </tr>\n          `).join('')}\n        </tbody>\n      </table>\n    </div>\n  `;\n\n  container.innerHTML = html;\n\n  container.querySelector('#search-input').addEventListener('input', (e) => {\n    window.dispatchEvent(new CustomEvent('filter-changed', { \n      detail: { query: e.target.value, category: container.querySelector('#category-filter').value } \n    }));\n  });\n\n  container.querySelector('#category-filter').addEventListener('change', (e) => {\n    window.dispatchEvent(new CustomEvent('filter-changed', { \n      detail: { query: container.querySelector('#search-input').value, category: e.target.value } \n    }));\n  });\n\n  container.querySelectorAll('.delete-btn').forEach(btn => {\n    btn.addEventListener('click', (e) => {\n      window.dispatchEvent(new CustomEvent('delete-transaction', { \n        detail: { id: e.target.dataset.id } \n      }));\n    });\n  });\n}"
+      }
+    ],
+    "commands": {
+      "install": "pnpm install",
+      "build": "pnpm build",
+      "dev": "pnpm dev"
+    },
+    "project": {
+      "framework": "vanilla",
+      "language": "javascript",
+      "packageManager": "pnpm",
+      "outputDirectory": "dist"
+    }
+  },
+  "metrics": {
+    "plannerMs": 4083.6178999999997,
+    "architectMs": 5291.9917,
+    "generatorMs": 8658.675699999998,
+    "validationMs": 6878.327499999999,
+    "repairMs": 0,
+    "totalMs": 24913.0736,
+    "architectRetries": 0
+  }
+}

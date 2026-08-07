@@ -21,6 +21,7 @@ export interface GenerationState {
   project: GenerationProject;
   plan?: ProjectPlan;
   architecture?: ArchitecturePlan;
+  plannerFeedback?: string;
   architectFeedback?: string;
   generatedFiles?: GeneratedProject;
   validationResult?: ValidationResult;
@@ -37,8 +38,9 @@ export interface GenerationState {
     plannerMs: number;
     architectMs: number;
     generatorMs: number;
-    validationMs: number; // accumulated
-    repairMs: number; // accumulated
+    validationMs: number;
+    repairMs: number;
     totalMs: number;
+    architectRetries: number;
   };
 }

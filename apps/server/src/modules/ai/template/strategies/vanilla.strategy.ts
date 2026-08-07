@@ -92,10 +92,8 @@ VITE_API_URL=http://localhost:3000`
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <div id="app">
-      <h1>Hello from Vanilla JS!</h1>
-    </div>
-    <script type="module" src="/script.js"></script>
+    <div id="app"></div>
+    <script type="module" src="/src/main.js"></script>
   </body>
 </html>`
       },
@@ -118,11 +116,9 @@ VITE_API_URL=http://localhost:3000`
   background: white;
   border-radius: 12px;
   box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  width: 100%;
+  max-width: 1200px;
 }`
-      },
-      {
-        path: "script.js",
-        content: `console.log('Vanilla application initialized.');`
       }
     ];
   }
