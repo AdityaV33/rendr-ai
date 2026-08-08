@@ -43,7 +43,7 @@ export async function removeFile(
     await fs.rm(filePath, {
       force: true,
     });
-  } catch (e) {
+  } catch {
     // Ignore error if it doesn't exist
   }
 }

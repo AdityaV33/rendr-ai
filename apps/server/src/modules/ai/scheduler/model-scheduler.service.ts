@@ -75,7 +75,7 @@ export class ModelSchedulerService {
     let rateLimits = 0;
     let totalAcquireTime = 0;
     let acquireCalls = 0;
-    let totalGenerationTime = 0;
+
     let slowestModel = "";
     let fastestModel = "";
     let slowestTime = 0;

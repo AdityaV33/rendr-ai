@@ -1,9 +1,0 @@
-[
-  {
-    "name": "React - Medium",
-    "success": false,
-    "projectId": "a47e328a-bb76-4c4a-a6c2-44ee5c70ce23",
-    "error": "InternalServerError: Pipeline execution failed validation after max repair attempts.\n\nValidation Report:\n[\n  \"src/App.tsx(2,75): error TS2307: Cannot find module 'react-router-dom' or its corresponding type declarations.\\r\\n[ELIFECYCLE] Command failed with exit code 2.\\n\"\n]\n    at AiService.generate (C:\\Users\\verma\\Desktop\\RendrAI\\rendr-ai\\apps\\server\\src\\modules\\ai\\ai.service.ts:80:13)\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n    at async runSingleBenchmark (C:\\Users\\verma\\.gemini\\antigravity-ide\\brain\\aa96aeed-6795-44de-8ec1-0dbaef0e5a01\\scratch\\run-single-benchmark.ts:42:21)",
-    "project": null
-  }
-]

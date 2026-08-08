@@ -29,7 +29,50 @@ Rules:
 - Generate ONLY the requested file.
 - Output raw source code. Do NOT wrap it in JSON.
 - Do NOT output markdown explanations.
-- Follow the exact exports and props defined in the contract (if provided).
+- **CONTRACT COMPLIANCE (CRITICAL)**:
+Before writing any code, reconstruct every function signature, prop interface, exported symbol, and context API from the Architect contracts.
+You MUST NOT invent:
+- function names
+- prop names
+- callback signatures
+- context methods
+- exported interfaces
+
+- **Data Model & Signature Immutability (CRITICAL)**:
+  You must treat exported data models (e.g., interfaces and types declared in the Architect's 'Public API') as IMMUTABLE CONTRACTS.
+  Every object you create, pass, return, or render must match that definition EXACTLY.
+  You MUST NOT:
+  - invent additional properties
+  - omit required properties
+  - rename fields
+  - change literal unions (e.g., using "Todo" when the model says "todo")
+  - assume optional fields exist if they are not explicitly declared
+  When calling imported APIs or passing props, you MUST strictly match the exact argument count, parameter types, and object shapes defined in the Architecture Manifest. If the required data is not part of the shared model, omit the feature rather than hallucinating new fields.
+- **SEMANTIC CONTRACTS (CRITICAL)**:
+  The Architecture Manifest defines not only the names of data models and APIs, but also their semantic meaning.
+  This applies equally to:
+  - model fields
+  - enums
+  - metrics
+  - function signatures
+  - workflow names
+  - context actions
+  You MUST NOT reinterpret the meaning of fields, enums, metrics, statuses, function parameters or workflows.
+  Never substitute one declared field for another based on similar meaning.
+  If the manifest declares "fromDate", never use "startDate".
+  If the manifest declares "dateRange", never split it into startDate/endDate.
+  Field names are immutable semantic contracts.
+  Examples:
+  - If a status represents enrollment ("Active" | "Inactive"), never treat it as academic performance ("Pass" | "Fail").
+  - If a metric is not explicitly declared, never assume it exists.
+  - If a field represents marks, attendance, dates or money, preserve its declared meaning throughout every computation.
+  - Never derive new semantics from field names or user intent.
+  Before implementing a workflow, resolve every referenced field, enum, metric and function from the Architecture Manifest and preserve their intended meaning exactly.
+- **FUNCTION INVOCATION (CRITICAL)**:
+  Never infer or guess the arguments of any exported function.
+  Every invocation must exactly match the parameter count, order and types declared by the Architecture Manifest.
+  If the manifest does not fully specify a function signature, you must not invent one.
+- Do not invent helper interfaces or prop types if the Architect has already defined them. Always reuse the provided contract definitions.
 - **CRITICAL**: Behavior Ownership and Rules are strict.
   - \`Responsibilities\`: You MUST strictly implement the explicit responsibilities assigned to this file in the manifest. Do not invent logic that belongs to another file.
   - \`Behavior Rules\`: You MUST strictly implement the interactions and expected state mutations mapped in the Behavior Rules.
@@ -40,6 +83,7 @@ Rules:
 - Generate the minimum code necessary to deliver the requested functionality.
 - Prefer composition over abstraction.`;
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function appendBehaviorContext(prompt: string, contract: any): string {
   if (!contract) return prompt;
   
@@ -92,19 +136,59 @@ Framework Rules (Vanilla JS):
 - Components MUST NOT manage their own persistent state (like localStorage); they should only manage local UI state (like modal visibility) and dispatch events for global actions.
 - \`index.html\` MUST provide the full application layout shell (navbars, headers, static buttons like 'Add Transaction', and empty containers for components). 
 - DOM Container Naming Convention: Empty containers in \`index.html\` MUST use an ID matching their component name in lowercase with a \`-container\` suffix (e.g., \`SummaryCards.js\` -> \`<div id="summarycards-container"></div>\`). The root file MUST query these exact IDs.
+- **DOM CONTAINERS ARE DIVS**: Your component MUST assume its target container in \`index.html\` is a standard \`<div>\`. If you need a \`<canvas>\` (for Chart.js) or \`<form>\`, you MUST create it dynamically (\`document.createElement\`) and append it inside the \`<div>\` container.
 - Static UI elements (like buttons) MUST use standardized IDs (e.g., \`add-transaction-btn\`). The root \`main.js\` MUST import ALL components (including modals), query these static IDs, and attach event listeners to open the modals.
 - \`index.html\` MUST NOT contain hidden shells or overlays for modals. Modals and overlays MUST be fully generated by their JavaScript component using \`document.createElement\` and appended directly to \`document.body\`, managing their own visibility programmatically (e.g., via \`.remove()\`).
-- Keep DOM manipulation clean and explicit.`;
+- Keep DOM manipulation clean and explicit.
+- **5-STEP MUTATION LIFECYCLE**: After EVERY state mutation, you MUST immediately: 1. Update in-memory state. 2. Persist to \`localStorage\`. 3. Re-render affected UI (tables/lists). 4. Recompute summary cards. 5. Recompute charts. This enforces a predictable data flow.
+- **PASS RAW STATE ONLY**: Your component's render function will receive the raw global state (e.g., the array of transactions or inventory items). You MUST perform any derived calculations (like summing totals) inside the component itself. Do NOT expect the root file to pass pre-calculated metrics.
+- **CHARTING**: You MUST use Chart.js for all charts. Do not choose another library. Do not create custom Canvas/SVG charts.
+- **REPAIR RULE**: Do NOT solve missing business logic by removing the feature. If a chart or CRUD operation is broken, you MUST repair the implementation (e.g., fix the state, fix the rendering). Do not just delete the broken feature.`;
   }
   return prompt + `
 Framework Rules (React/TypeScript):
-- If using Recharts, NEVER use custom typed formatter functions for Tooltip or Axis. You MUST type the formatter arguments as \`any\` to avoid complex TS2322 type mismatch errors (e.g. \`formatter={(value: any, name: any) => [value, name]}\`).`;
+- NEVER use or import 'uuid' for client-side React applications. You MUST use the native 'crypto.randomUUID()' for generating unique IDs.
+- **Single-Page Application & Feature Completeness (CRITICAL)**:
+  Every generated application must be implemented as a single-page React application.
+  All requested workflows, data, and interactions must exist within one cohesive, responsive interface.
+  Complexity must be organized through reusable components, sections, cards, dialogs, drawers, tabs, accordions, and conditional rendering rather than multiple pages or routing.
+  Every interactive element visible on the page must be fully implemented, connected to shared application state, and function exactly as its interface suggests.
+  No button, form, search bar, filter, chart, KPI, table, modal, or workflow may appear unless it is completely operational.
+  Never generate placeholder features, disabled interactions, incomplete workflows, or partially implemented UI.
+  If a feature is present, it must be production-ready and fully functional; otherwise, it must not appear at all.
+  The generated application should feel like a complete finished product rather than a prototype or work in progress.
+
+- **State Synchronization Rule (CRITICAL)**:
+  All visible information in the application must derive from the same shared source of truth.
+  Creating, updating or deleting data must automatically update every affected component, including tables, charts, KPI cards, statistics, search results and filtered views.
+  Never hardcode values after shared application state exists.
+
+- **KPI CARDS (CRITICAL)**:
+  KPI cards must display values computed from the application's current shared state.
+  Never display placeholder values, static labels (e.g. "Calculated", "Dynamic", "Computed"), TODOs, or hardcoded examples.
+  Every KPI requested by the architecture must have a deterministic computation derived from the canonical data model.
+  Examples:
+  - Total Products = products.length
+  - Total Revenue = sum(order.total)
+  - Completed Tasks = tasks where status === "Completed"
+  - Largest Expense = max(expense.amount)
+  - Win Rate = wonDeals / totalDeals
+  - Low Stock = products where quantity <= lowStockThreshold
+  If a requested KPI cannot be computed from the canonical shared model, do not invent a value. Instead, you must omit that KPI entirely.
+- Generation Priority Budget:
+  Priority 0 (Build Correctness - Mandatory): The generated application must compile successfully on the first attempt whenever possible. Never invent APIs, context methods, prop names, callback signatures, or exported interfaces that are not defined by the Architect. If a feature cannot be implemented using the provided contracts, omit that feature instead of inventing a new implementation.
+  Priority 1 (Functional Workflows - Mandatory): Every feature that appears in the generated UI must actually work (e.g., add buttons create records, edit buttons update records, search filters visible data, forms validate inputs, lists display actual stored data). Never generate placeholder UI for an advertised feature.
+  Priority 2 (Data Consistency - Mandatory): Every visible component must use the same shared application state. Do not hardcode demo values once state exists. (e.g., customer names in tables must come from state, KPI cards must update after CRUD actions, charts must derive values from the same state as KPIs). If a chart cannot display real application data, omit the chart instead of rendering an empty or fake visualization.
+  Priority 3 (Dashboard Quality): Generate a clean SaaS dashboard using a Header, KPI cards, Toolbar, Table/List, and ONE simple chart (optional if real data cannot support it). Prefer simple layouts over complex dashboards.
+  Priority 4 (Visual Polish): Apply consistent spacing, rounded cards, Lucide icons, subtle shadows, responsive Tailwind, typography hierarchy. Do not sacrifice Priority 0-3 for additional polish.
+  Priority 5 (Optional Features): Only implement these if budget remains (secondary charts, activity feeds, advanced analytics, decorative widgets, animations). These should always be dropped before reducing functionality.`;
 }
 
 export function buildFilePrompt(
   file: ArchitecturePlan["fileStructure"][0],
   architecturePlan: ArchitecturePlan,
   allContracts: Record<string, Omit<ComponentContract, "description">>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   behavioralContract?: any
 ): { system: string; prompt: string } {
   const manifest = buildArchitectureManifest(architecturePlan, allContracts);
@@ -194,6 +278,7 @@ export function buildAppPrompt(
   projectPlan: ProjectPlan,
   architecturePlan: ArchitecturePlan,
   allContracts: Record<string, Omit<ComponentContract, "description">>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   behavioralContract?: any
 ): { system: string; prompt: string } {
   const manifest = buildArchitectureManifest(architecturePlan, allContracts);

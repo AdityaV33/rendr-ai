@@ -2,6 +2,8 @@ import type { GenerationState } from "../state.js";
 import type { GraphEvent, GraphEventType } from "../types.js";
 import type { SanityGateService } from "../../validator/sanity-gate.service.js";
 import type { RepairEngineService } from "../../repair/repair-engine.service.js";
+import { DiagnosticParser } from "../../repair/diagnostic-parser.js";
+import { RuleEngine } from "../../repair/rule-engine.js";
 import { runProcess } from "../../../runtime/process.service.js";
 import { getWorkspacePath } from "../../../runtime/workspace.service.js";
 import { writeGeneratedProject } from "../../../runtime/workspace-file.service.js";
@@ -24,7 +26,7 @@ export class GateRunnerNode {
       }
     };
 
-    let currentState = state;
+    const currentState = state;
     if (!currentState.gateAttempts) currentState.gateAttempts = {};
 
     const workspacePath = getWorkspacePath(currentState.project.id);
@@ -77,21 +79,27 @@ export class GateRunnerNode {
       
       console.log(`[GateRunner] ${gate} failed. Triggering repair attempt ${totalRepairAttempts}...`);
       
+      const diagnostics = DiagnosticParser.parse(errorOutput);
+      const fixedDeterministically = await RuleEngine.attemptDeterministicFix(diagnostics, workspacePath);
+
+      if (fixedDeterministically) {
+        console.log(`[GateRunner] Error fixed deterministically. Skipping LLM repair.`);
+        return;
+      }
+
+      const hasAffectedFiles = diagnostics.some(d => !!d.file);
+      if (!hasAffectedFiles) {
+        throw new Error(`Architecture Failure: No affected files could be extracted from the error. Aborting to prevent full-project fallback.\\nError: ${errorOutput.substring(0, 200)}...`);
+      }
+
       emit("repair_started");
       const startRepair = performance.now();
-      await this.repairEngine.executeGateRepair(currentState, gate, errorOutput);
+      await this.repairEngine.executeGateRepair(currentState, gate, errorOutput, diagnostics);
       const repairDuration = performance.now() - startRepair;
       totalRepairTimeMs += repairDuration;
       emit("repair_completed", repairDuration);
       
       await writeGeneratedProject(currentState.project.id, currentState.generatedFiles!.files);
-    };
-
-    const extractTscErrors = (output: string) => {
-      // Basic extraction of file and error message to make repair more deterministic
-      const lines = output.split('\\n');
-      const errorLines = lines.filter(l => l.includes('error TS'));
-      return errorLines.length > 0 ? errorLines.join('\\n') : output;
     };
 
     // 2. Compile Gate
@@ -100,8 +108,9 @@ export class GateRunnerNode {
       let compileResult = await runCompile();
       while (!compileResult.success) {
         try {
-          await executeRepair("Compile", extractTscErrors(compileResult.stdout + "\\n" + compileResult.stderr));
+          await executeRepair("Compile", compileResult.stdout + "\\n" + compileResult.stderr);
           compileResult = await runCompile();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (err: any) {
           console.error(`[GateRunner] Compile gate failed: ${err.message}`);
           currentState.errors.push("Compile failed: " + compileResult.stdout);
@@ -117,6 +126,7 @@ export class GateRunnerNode {
       try {
         await executeRepair("Build", buildResult.stdout + "\\n" + buildResult.stderr);
         buildResult = await runBuild();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (err: any) {
         console.error(`[GateRunner] Build gate failed: ${err.message}`);
         currentState.errors.push("Build failed: " + buildResult.stdout);
@@ -137,6 +147,7 @@ export class GateRunnerNode {
       if (runtimeState?.preview) {
         currentState.previewUrl = runtimeState.preview.url;
       }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       // Runtime repair should only trigger if the server genuinely failed to start within the timeout
       // and we still have repair budget.
@@ -148,6 +159,7 @@ export class GateRunnerNode {
         if (retryState?.preview) {
           currentState.previewUrl = retryState.preview.url;
         }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (retryErr: any) {
          currentState.errors.push("Preview failed to start: " + retryErr.message);
       }

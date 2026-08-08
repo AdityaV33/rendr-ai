@@ -123,6 +123,7 @@ export class GenerationGraph {
         currentState.metrics.generatorMs = performance.now() - startNode;
         emit("generator_completed", currentState.metrics.generatorMs);
         break;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (err: any) {
         if (err.message === "MAX_TOKENS_EXCEEDED" && generatorAttempts < 2) {
           console.warn("[Pipeline] Generator hit MAX_TOKENS_EXCEEDED. Returning to Planner to reduce scope...");

@@ -100,6 +100,7 @@ export class GeneratorV2Service {
     // Parallel Install
     const workspacePath = getWorkspacePath(projectId);
     const packageJsonFile = templateFiles.find(f => f.path === "package.json");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let installPromise: Promise<any> | null = null;
 
     if (packageJsonFile) {

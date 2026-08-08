@@ -3,6 +3,7 @@ import type { GenerationState } from "../graph/state.js";
 import { buildGateRepairPrompt } from "../prompts/repair.prompt.js";
 import { env } from "../../../config/env.js";
 import { z } from "zod";
+import type { ParsedDiagnostic, RepairContext } from "./repair.types.js";
 import { zodToGeminiSchema } from "../utils/schema.utils.js";
 
 const repairResponseSchema = z.object({
@@ -19,12 +20,14 @@ export class RepairEngineService {
   async executeGateRepair(
     state: GenerationState,
     gateName: string,
-    errors: string,
+    rawErrorOutput: string,
+    diagnostics: ParsedDiagnostic[],
     escalationMessage?: string
   ): Promise<void> {
     if (!state.generatedFiles || !state.architecture) return;
 
     const files = state.generatedFiles.files;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const allContracts: Record<string, any> = {};
     
     if (state.architecture.componentContracts) {
@@ -33,14 +36,61 @@ export class RepairEngineService {
       }
     }
 
-    const prompt = buildGateRepairPrompt(
-      gateName,
-      errors,
-      state.architecture,
-      allContracts,
-      files,
-      escalationMessage
-    );
+    // Extract unique affected file paths
+    const affectedFilePaths = Array.from(new Set(diagnostics.map(d => d.file).filter(Boolean))) as string[];
+    
+    // --- NEW BOUNDED REPAIR CONTEXT BUDGET ---
+    const contextFiles = new Set<string>();
+    
+    // 1. Broken files
+    for (const path of affectedFilePaths) {
+      if (contextFiles.size < 4) contextFiles.add(path);
+    }
+    
+    // 2. Parent Importer & Imported Interfaces
+    for (const brokenPath of affectedFilePaths) {
+      const brokenFile = files.find(f => f.path === brokenPath);
+      if (!brokenFile) continue;
+      
+      const basename = brokenPath.split('/').pop()!.replace(/\.[^.]+$/, '');
+      
+      // Parent importer
+      for (const f of files) {
+        if (contextFiles.size >= 4) break;
+        if (f.content.includes(`/${basename}`) || f.content.includes(`./${basename}`)) {
+          contextFiles.add(f.path);
+        }
+      }
+      
+      // Imported interfaces
+      const importMatches = [...brokenFile.content.matchAll(/import\s+.*?\s+from\s+['"]([^'"]+)['"]/g)];
+      for (const match of importMatches) {
+        if (contextFiles.size >= 4) break;
+        const importPath = match[1];
+        if (importPath.startsWith('.')) {
+          const importBasename = importPath.split('/').pop()!;
+          const importedFile = files.find(f => f.path.includes(`/${importBasename}.`) || f.path.includes(`/${importBasename}`) || f.path === importBasename);
+          if (importedFile) contextFiles.add(importedFile.path);
+        }
+      }
+    }
+
+    const affectedFiles = files.filter(f => contextFiles.has(f.path));
+
+    // Cluster error messages
+    const clusteredDiagnostics = diagnostics; // Passed directly in context
+
+    const repairContext: RepairContext = {
+      diagnostics: clusteredDiagnostics,
+      affectedFiles,
+      architecture: state.architecture,
+      contracts: allContracts,
+      buildCommand: state.generatedFiles.commands.build,
+      framework: state.architecture.stack.frontendFramework,
+      rawErrorOutput
+    };
+
+    const prompt = buildGateRepairPrompt(gateName, repairContext, escalationMessage);
 
     const repairResult = await this.gemini.generateStructured<{ files: { path: string, content: string }[] }>(
       prompt.prompt,

@@ -125,7 +125,7 @@ async function writeProjectFiles(
       if (existingContent === file.content) {
         isChanged = false;
       }
-    } catch (e) {
+    } catch {
       // File doesn't exist yet
     }
 

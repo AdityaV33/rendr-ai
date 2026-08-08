@@ -31,7 +31,7 @@ export class DevServerManager {
       console.error(`[DevServer] Failed to start Vite for ${projectId}:`, err);
     });
 
-    child.on('exit', (code) => {
+    child.on('exit', (_code) => {
       this.activeServers.delete(projectId);
     });
 
@@ -47,7 +47,7 @@ export class DevServerManager {
           isReady = true;
           break;
         }
-      } catch (e) {
+      } catch {
         // Ignore fetch errors while waiting
       }
       await new Promise(resolve => setTimeout(resolve, 200));

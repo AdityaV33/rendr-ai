@@ -1,4 +1,4 @@
-import { ProjectModel, ProjectFramework } from "./project.model.js";
+import { ProjectModel } from "./project.model.js";
 import {
   CreateProjectInput, UpdateProjectInput,} from "./project.validation.js";
 import { aiService } from "../ai/index.js";
@@ -6,7 +6,6 @@ import { NotFoundError } from "../lib/http-error.js";
 import * as workspaceService from "../runtime/workspace.service.js";
 import * as runtimeManagerService from "../runtime/runtime-manager.service.js";
 
-import * as workspaceFileService from "../runtime/workspace-file.service.js";
 
 export async function createProject(
   owner: string,
@@ -145,6 +144,7 @@ export async function generateProject(owner: string, projectId: string) {
     // Telemetry Calculations
     const aiFiles = generatedProject.files.filter(f => !f.path.includes('node_modules') && f.content && f.content.length > 0);
     const aiFileCount = aiFiles.length;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const largestFile = aiFiles.reduce((max, f) => f.content!.length > (max.content?.length || 0) ? f : max, {} as any);
     const avgFileSize = aiFiles.reduce((sum, f) => sum + f.content!.length, 0) / (aiFileCount || 1);
     const requestedFeatures = projectPlan.features.length;
@@ -161,7 +161,11 @@ export async function generateProject(owner: string, projectId: string) {
     console.log(`AI file count: ${aiFileCount}`);
     console.log(`Average file size: ${(avgFileSize / 1024).toFixed(1)} KB`);
     console.log(`Largest generated file: ${largestFile.path} (${((largestFile.content?.length || 0) / 1024).toFixed(1)} KB)`);
-    console.log(`Architecture retries: ${metrics?.architectRetries || 0}`);
+    type PipelineMetrics = {
+      architectRetries?: number;
+    };
+    const typedMetrics = metrics as PipelineMetrics;
+    console.log(`Architecture retries: ${typedMetrics?.architectRetries || 0}`);
     console.log("\n===================================");
     console.log(`AI Branch: ${aiTime.toFixed(0)}ms`);
     console.log(`Runtime Prep: ${runtimeTime.toFixed(0)}ms`);

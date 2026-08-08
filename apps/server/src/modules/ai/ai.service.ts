@@ -24,7 +24,7 @@ export class AiService {
     this.graph = createGenerationGraph(this.gemini);
   }
 
-  async generate(data: { prompt?: string, projectId?: string, onEvent?: (event: import("./graph/types.js").GraphEvent) => void }): Promise<{ projectPlan: ProjectPlan; architecturePlan: ArchitecturePlan; generatedProject: GeneratedProject; metrics: any }> {
+  async generate(data: { prompt?: string, projectId?: string, onEvent?: (event: import("./graph/types.js").GraphEvent) => void }): Promise<{ projectPlan: ProjectPlan; architecturePlan: ArchitecturePlan; generatedProject: GeneratedProject; metrics: unknown }> {
     if (!data.prompt) {
       throw new BadRequestError("A prompt is required.");
     }
@@ -84,7 +84,7 @@ export class AiService {
       throw new InternalServerError("Pipeline execution failed to generate required artifacts.");
     }
 
-    const schedulerMetrics = this.gemini.getSchedulerMetrics();
+    const _schedulerMetrics = this.gemini.getSchedulerMetrics();
     const repairAttempts = Object.values(finalState.gateAttempts || {}).reduce((a, b) => a + b, 0);
 
 console.log(`
@@ -108,11 +108,12 @@ GateRunner:             ${(finalState.metrics.validationMs / 1000).toFixed(1)} s
       architecturePlan: finalState.architecture, 
       generatedProject: finalState.generatedFiles,
       metrics: finalState.metrics
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as unknown as { projectPlan: ProjectPlan; architecturePlan: ArchitecturePlan; generatedProject: GeneratedProject; metrics: any };
   }
 
   async refine(_data: unknown) {
-    return { status: "placeholder", message: "refine method not implemented" };
+    throw new Error("Method not implemented.");
   }
 }
 

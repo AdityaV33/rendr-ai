@@ -59,6 +59,7 @@ export async function installDependenciesInWorkspace(
     }
 
     return result;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (err: any) {
     throw new InternalServerError(`Failed to check or install dependencies in ${workspacePath}. Error: ${err.message}`);
   }

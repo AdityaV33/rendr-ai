@@ -15,7 +15,7 @@ export const projectPlanSchema = z.object({
   applicationType: z.string(),
 
   /** Framework selection (Defaults to React) */
-  frontendFramework: z.enum(["react-vite", "vanilla-js"]).describe("The framework the application must be built in. Use 'react-vite' by default, or 'vanilla-js' if the user explicitly requests Vanilla JavaScript."),
+  frontendFramework: z.enum(["react-vite", "vanilla-js"]).describe("The framework the application must be built in. ALWAYS use 'react-vite'. // TODO (Vanilla JS Re-enablement): Restore the following instruction: Use 'react-vite' by default, or 'vanilla-js' if the user explicitly requests Vanilla JavaScript."),
 
   /** One-sentence purpose statement */
   purpose: z.string(),
