@@ -1,41 +1,136 @@
 import { useNavigate } from "react-router-dom";
-
+import { useState } from "react";
+import { useDashboardStore } from "../store/dashboard.store";
 import type { Project } from "../types/dashboard";
 
 interface ProjectCardProps {
   project: Project;
 }
 
-const ProjectCard = ({
-  project,
-}: ProjectCardProps) => {
+const formatTimeAgo = (dateString: string) => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+  
+  if (diffInSeconds < 60) return "just now";
+  const diffInMinutes = Math.floor(diffInSeconds / 60);
+  if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+  const diffInHours = Math.floor(diffInMinutes / 60);
+  if (diffInHours < 24) return `${diffInHours}h ago`;
+  const diffInDays = Math.floor(diffInHours / 24);
+  return `${diffInDays}d ago`;
+};
+
+const TrashIcon = ({ size = 16, className = "" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <polyline points="3 6 5 6 21 6"></polyline>
+    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+    <line x1="10" y1="11" x2="10" y2="17"></line>
+    <line x1="14" y1="11" x2="14" y2="17"></line>
+  </svg>
+);
+
+const ProjectCard = ({ project }: ProjectCardProps) => {
   const navigate = useNavigate();
+  const deleteProject = useDashboardStore((state) => state.deleteProject);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDelete = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsDeleting(true);
+    try {
+      await deleteProject(project.id);
+    } catch {
+      setIsDeleting(false);
+    }
+  };
 
   return (
-    <div className="rounded-xl border border-neutral-800 bg-neutral-900 p-5 transition hover:border-neutral-600">
-      <h2 className="text-lg font-semibold">
-        {project.name}
-      </h2>
+    <div 
+      onClick={() => navigate(`/builder/${project.id}`)}
+      className="group flex flex-col bg-[#0a0a0a] border border-[#f5f5f5] cursor-pointer hover:border-[#a0a0a0] transition-colors"
+    >
+      {/* Top Bar */}
+      <div className="flex items-center justify-between px-4 py-2 border-b border-[#f5f5f5]">
+        <div className="flex items-center space-x-2">
+          <div className="w-2.5 h-2.5 rounded-full border border-[#f5f5f5]" />
+          <div className="w-2.5 h-2.5 rounded-full border border-[#f5f5f5]" />
+          <div className="w-2.5 h-2.5 rounded-full border border-[#f5f5f5]" />
+        </div>
+        <span className="font-mono text-sm text-[#f5f5f5]">
+          {project.updatedAt ? formatTimeAgo(project.updatedAt) : formatTimeAgo(project.createdAt)}
+        </span>
+      </div>
 
-      <p className="mt-2 line-clamp-2 text-sm text-neutral-400">
-        {project.prompt}
-      </p>
-
-      <div className="mt-4 flex items-center justify-between">
-        <div className="text-xs text-neutral-500">
-          <p>{project.framework}</p>
-
-          <p>{project.status}</p>
+      <div className="p-5 flex flex-col flex-1">
+        {/* Title & Description */}
+        <div className="flex-1">
+          <h2 className="font-mono text-2xl font-bold tracking-tight text-[#f5f5f5] mb-4">
+            {project.name}
+          </h2>
+          <p className="font-mono text-sm text-[#f5f5f5] leading-relaxed mb-6 whitespace-pre-wrap line-clamp-3">
+            {project.prompt}
+          </p>
         </div>
 
-        <button
-          onClick={() =>
-            navigate(`/builder/${project.id}`)
-          }
-          className="rounded-lg bg-white px-3 py-2 text-sm font-medium text-black transition hover:bg-neutral-200"
-        >
-          Open Builder
-        </button>
+        {/* Separator */}
+        <div className="h-px w-full border-b border-dashed border-[#555] mb-5" />
+
+        {/* Footer Actions */}
+        <div className="flex items-center justify-between">
+          {/* Status Badge */}
+          {project.status === 'ready' && (
+            <div className="flex items-center space-x-2 border border-[#22c55e]/30 px-3 py-1.5 bg-[#22c55e]/5">
+              <div className="w-2 h-2 rounded-full bg-[#4ade80]" />
+              <span className="font-mono text-sm text-[#4ade80]">Complete</span>
+            </div>
+          )}
+          
+          {project.status === 'failed' && (
+            <div className="flex items-center space-x-2 border border-[#ef4444]/30 px-3 py-1.5 bg-[#ef4444]/5">
+              <div className="w-2 h-2 rounded-full bg-[#f87171]" />
+              <span className="font-mono text-sm text-[#f87171]">Build Failed</span>
+            </div>
+          )}
+
+          {project.status === 'draft' && (
+            <div className="flex items-center space-x-2 border border-[#a0a0a0]/30 px-3 py-1.5 bg-[#a0a0a0]/5">
+              <div className="w-2 h-2 rounded-full bg-[#a0a0a0]" />
+              <span className="font-mono text-sm text-[#a0a0a0]">Draft</span>
+            </div>
+          )}
+
+          {project.status === 'planning' && (
+            <div className="flex items-center space-x-2 border border-[#3b82f6]/30 px-3 py-1.5 bg-[#3b82f6]/5">
+              <div className="w-2 h-2 rounded-full bg-[#60a5fa] animate-pulse" />
+              <span className="font-mono text-sm text-[#60a5fa]">Planning...</span>
+            </div>
+          )}
+
+          {['generating', 'building'].includes(project.status) && (
+            <div className="flex items-center space-x-2 border border-[#eab308]/30 px-3 py-1.5 bg-[#eab308]/5">
+              <div className="w-2 h-2 rounded-full bg-[#facc15] animate-pulse" />
+              <span className="font-mono text-sm text-[#facc15]">Building...</span>
+            </div>
+          )}
+
+          {/* Delete Button */}
+          <button
+            onClick={handleDelete}
+            disabled={isDeleting}
+            className="flex items-center justify-center border border-[#555] p-2 text-[#a0a0a0] hover:bg-[#1a1a1a] hover:text-[#f5f5f5] hover:border-[#f5f5f5] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Delete Project"
+          >
+            {isDeleting ? (
+               <svg className="animate-spin h-5 w-5 text-[#f5f5f5]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+               </svg>
+            ) : (
+               <TrashIcon size={20} />
+            )}
+          </button>
+        </div>
       </div>
     </div>
   );

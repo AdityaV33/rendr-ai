@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { Toaster } from "react-hot-toast";
 
 import { useAuthStore } from "@/features/auth/store/auth.store";
 import AppRouter from "@/router/AppRouter";
@@ -10,7 +11,12 @@ function App() {
     void initialize();
   }, [initialize]);
 
-  return <AppRouter />;
+  return (
+    <>
+      <Toaster position="bottom-right" />
+      <AppRouter />
+    </>
+  );
 }
 
 export default App;

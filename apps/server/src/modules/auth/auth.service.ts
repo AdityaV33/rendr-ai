@@ -17,7 +17,7 @@ export async function register(data: RegisterInput) {
   const existingUser = await userService.findByEmail(data.email);
 
   if (existingUser) {
-    throw new Error("Email already registered.");
+    throw new Error("An account with this email already exists.");
   }
 
   const passwordHash = await hash(data.password);

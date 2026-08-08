@@ -94,3 +94,49 @@ export const PixelPackage = ({ className = "", size = 24 }) => (
     <path d="M3 8l9 5 9-5 M12 13v9" />
   </svg>
 );
+
+export const PixelEnvelope = ({ className = "", size = 24 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" shapeRendering="crispEdges" className={className}>
+    <rect x="2" y="5" width="20" height="14" />
+    <path d="M2 5l10 8 10-8" />
+  </svg>
+);
+
+export const PixelLock = ({ className = "", size = 24 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" shapeRendering="crispEdges" className={className}>
+    <rect x="5" y="11" width="14" height="10" />
+    <path d="M7 11V6h10v5 M12 15v2" />
+  </svg>
+);
+
+export const PixelEyeClosed = ({ className = "", size = 24 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" shapeRendering="crispEdges" className={className}>
+    <path d="M2 12h20 M12 12v4 M7 12l-2 3 M17 12l2 3" />
+  </svg>
+);
+
+export const PixelCheck = ({ className = "", size = 24 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" shapeRendering="crispEdges" className={className}>
+    <path d="M5 12l4 4 10-10" />
+  </svg>
+);
+
+export const PixelMinimize = ({ className = "", size = 12 }) => (
+  <svg width={size} height={size} viewBox="0 0 10 10" fill="currentColor" shapeRendering="crispEdges" className={className}>
+    <rect x="0" y="4" width="10" height="2" />
+  </svg>
+);
+
+export const PixelClose = ({ className = "", size = 12 }) => (
+  <svg width={size} height={size} viewBox="0 0 10 10" fill="currentColor" shapeRendering="crispEdges" className={className}>
+    <rect x="0" y="0" width="2" height="2" />
+    <rect x="8" y="0" width="2" height="2" />
+    <rect x="2" y="2" width="2" height="2" />
+    <rect x="6" y="2" width="2" height="2" />
+    <rect x="4" y="4" width="2" height="2" />
+    <rect x="2" y="6" width="2" height="2" />
+    <rect x="6" y="6" width="2" height="2" />
+    <rect x="0" y="8" width="2" height="2" />
+    <rect x="8" y="8" width="2" height="2" />
+  </svg>
+);

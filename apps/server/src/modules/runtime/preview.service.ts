@@ -143,6 +143,9 @@ export async function startPreview(
     const args = cmdParts.slice(1);
     
     // Add vite arguments if it's a vite project (this will be safely ignored by non-vite projects if we pass them appropriately, or we can just append them)
+    if (cmd === "npm") {
+      args.push("--");
+    }
     args.push("--host", "0.0.0.0", "--port", String(port), "--strictPort");
 
     child = startProcess(

@@ -4,6 +4,7 @@ export interface Project {
   prompt: string;
   framework: string;
   status: string;
+  files: string[];
   createdAt: string;
   updatedAt: string;
 }

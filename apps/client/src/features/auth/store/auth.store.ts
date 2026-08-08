@@ -1,6 +1,8 @@
 import { create } from "zustand";
+import axios from "axios";
 
 import { tokenManager } from "@/lib/token-manager";
+import { toast } from "@/lib/toast";
 
 import { authService } from "../services/auth.services";
 import type {
@@ -54,14 +56,23 @@ export const useAuthStore = create<AuthState>((set) => ({
         isAuthenticated: true,
         loading: false,
       });
+
+      toast.success("Welcome back.");
     } catch (error) {
+      const msg = axios.isAxiosError(error) && error.response?.data?.message
+            ? error.response.data.message
+            : "Something went wrong. Please try again.";
+      
       set({
         loading: false,
-        error:
-          error instanceof Error
-            ? error.message
-            : "Login failed.",
+        error: msg,
       });
+
+      toast.error(
+        !axios.isAxiosError(error) 
+          ? "Unable to reach server. Please try again." 
+          : msg
+      );
 
       throw error;
     }
@@ -84,21 +95,34 @@ export const useAuthStore = create<AuthState>((set) => ({
         isAuthenticated: true,
         loading: false,
       });
+
+      toast.success("Account created successfully.");
     } catch (error) {
+      const msg = axios.isAxiosError(error) && error.response?.data?.message
+            ? error.response.data.message
+            : "Something went wrong. Please try again.";
+
       set({
         loading: false,
-        error:
-          error instanceof Error
-            ? error.message
-            : "Registration failed.",
+        error: msg,
       });
+
+      toast.error(
+        !axios.isAxiosError(error) 
+          ? "Unable to reach server. Please try again." 
+          : msg
+      );
 
       throw error;
     }
   },
 
   logout: async () => {
-    await authService.logout();
+    try {
+      await authService.logout();
+    } catch (e) {
+      // ignore
+    }
 
     tokenManager.clearToken();
 
@@ -108,6 +132,8 @@ export const useAuthStore = create<AuthState>((set) => ({
       isAuthenticated: false,
       error: null,
     });
+
+    toast.success("Signed out successfully.");
   },
 
   initialize: async () => {

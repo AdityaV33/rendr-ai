@@ -72,6 +72,17 @@ api.interceptors.response.use(
     } catch (refreshError) {
       tokenManager.clearToken();
 
+      if (!window.location.pathname.includes("/login") && !window.location.pathname.includes("/register")) {
+        import("@/lib/toast").then(({ toast }) => {
+          toast.error("Session expired.");
+        });
+        
+        // Short delay to let the toast render before redirecting
+        setTimeout(() => {
+          window.location.href = "/login";
+        }, 500);
+      }
+
       return Promise.reject(refreshError);
     }
   },
