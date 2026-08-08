@@ -127,14 +127,6 @@ export class GeneratorV2Service {
       }
     }
 
-    // Organize AI files into layers
-    const layers = [
-      { name: "shared", responsibilities: ["utility", "store", "config"] },
-      { name: "components", responsibilities: ["component"] },
-      { name: "pages", responsibilities: ["page"] },
-      { name: "root", responsibilities: ["root"] }
-    ];
-
     const generatedFiles: Array<{ path: string; content: string }> = [];
 
     // Generator Worker Queue
@@ -172,14 +164,9 @@ export class GeneratorV2Service {
       });
     };
 
-    for (const layerDef of layers) {
-      const layerFiles = aiFiles.filter(f => layerDef.responsibilities.includes(this.determineResponsibility(f.path)));
-      if (layerFiles.length === 0) continue;
-
-      console.log(`[GeneratorV2] Starting Layer ${layerDef.name} (${layerFiles.length} files)`);
-      await executeQueue(layerFiles);
-      console.log(`[GeneratorV2] Layer ${layerDef.name} Finished`);
-    }
+    console.log(`[GeneratorV2] Starting Flat Generation Queue (${aiFiles.length} files)`);
+    await executeQueue(aiFiles);
+    console.log(`[GeneratorV2] Generation Queue Finished`);
 
     // Output Benchmarks
     const totalTimeMs = performance.now() - startGeneration;

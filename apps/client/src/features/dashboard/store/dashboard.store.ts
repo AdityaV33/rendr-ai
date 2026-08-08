@@ -31,10 +31,12 @@ export const useDashboardStore =
     error: null,
 
     fetchProjects: async () => {
-      set({
-        loading: true,
-        error: null,
-      });
+      if (get().projects.length === 0) {
+        set({
+          loading: true,
+          error: null,
+        });
+      }
 
       try {
         const projects =
@@ -76,14 +78,21 @@ export const useDashboardStore =
           ],
         });
 
-        // Trigger generation
-        project = await dashboardService.generateProject(project.id);
+        // Trigger generation but don't await the final project, just wait for the 202 accepted
+        await dashboardService.generateProject(project.id);
         
-        // Update project state with generation status
+        // Optimistically update the project state to start polling and trigger UI
         set({
-          projects: get().projects.map(p => p.id === project.id ? project : p),
+          projects: get().projects.map(p => 
+            p.id === project.id 
+              ? { ...p, status: "generating", pipelineStage: "Planning..." } 
+              : p
+          ),
         });
-
+        
+        // Wait 3 seconds to simulate creation time as requested by user
+        await new Promise(r => setTimeout(r, 3000));
+        
         set({
           loading: false,
         });

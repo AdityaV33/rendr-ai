@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useDashboardStore } from "../store/dashboard.store";
 import type { Project } from "../types/dashboard";
 
@@ -47,8 +48,13 @@ const ProjectCard = ({ project }: ProjectCardProps) => {
 
   return (
     <div 
-      onClick={() => navigate(`/builder/${project.id}`)}
-      className="group flex flex-col bg-[#0a0a0a] border border-[#f5f5f5] cursor-pointer hover:border-[#a0a0a0] transition-colors"
+      onClick={() => {
+        if (!['generating', 'building', 'planning'].includes(project.status)) {
+          navigate(`/builder/${project.id}`);
+        }
+      }}
+      title={['generating', 'building', 'planning'].includes(project.status) ? "Project is still being generated." : undefined}
+      className={`group flex flex-col bg-[#0a0a0a] border border-[#f5f5f5] ${['generating', 'building', 'planning'].includes(project.status) ? 'cursor-not-allowed opacity-80' : 'cursor-pointer hover:border-[#a0a0a0]'} transition-colors`}
     >
       {/* Top Bar */}
       <div className="flex items-center justify-between px-4 py-2 border-b border-[#f5f5f5]">
@@ -79,40 +85,95 @@ const ProjectCard = ({ project }: ProjectCardProps) => {
         {/* Footer Actions */}
         <div className="flex items-center justify-between">
           {/* Status Badge */}
-          {project.status === 'ready' && (
-            <div className="flex items-center space-x-2 border border-[#22c55e]/30 px-3 py-1.5 bg-[#22c55e]/5">
-              <div className="w-2 h-2 rounded-full bg-[#4ade80]" />
-              <span className="font-mono text-sm text-[#4ade80]">Complete</span>
-            </div>
-          )}
-          
-          {project.status === 'failed' && (
-            <div className="flex items-center space-x-2 border border-[#ef4444]/30 px-3 py-1.5 bg-[#ef4444]/5">
-              <div className="w-2 h-2 rounded-full bg-[#f87171]" />
-              <span className="font-mono text-sm text-[#f87171]">Build Failed</span>
-            </div>
-          )}
+          <AnimatePresence mode="popLayout">
+            {project.status === 'ready' && (
+              <motion.div
+                key="ready"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.4, ease: "easeOut" }}
+                className="flex items-center space-x-2 border border-[#22c55e]/30 px-3 py-1.5 bg-[#22c55e]/5"
+              >
+                <div className="w-2 h-2 rounded-full bg-[#4ade80]" />
+                <span className="font-mono text-sm text-[#4ade80]">Complete</span>
+              </motion.div>
+            )}
+            
+            {project.status === 'failed' && (
+              <motion.div
+                key="failed"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.4, ease: "easeOut" }}
+                className="flex items-center space-x-2 border border-[#ef4444]/30 px-3 py-1.5 bg-[#ef4444]/5"
+              >
+                <div className="w-2 h-2 rounded-full bg-[#f87171]" />
+                <span className="font-mono text-sm text-[#f87171]">Build Failed</span>
+              </motion.div>
+            )}
 
-          {project.status === 'draft' && (
-            <div className="flex items-center space-x-2 border border-[#a0a0a0]/30 px-3 py-1.5 bg-[#a0a0a0]/5">
-              <div className="w-2 h-2 rounded-full bg-[#a0a0a0]" />
-              <span className="font-mono text-sm text-[#a0a0a0]">Draft</span>
-            </div>
-          )}
+            {project.status === 'draft' && (
+              <motion.div
+                key="draft"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.4, ease: "easeOut" }}
+                className="flex items-center space-x-2 border border-[#a0a0a0]/30 px-3 py-1.5 bg-[#a0a0a0]/5"
+              >
+                <div className="w-2 h-2 rounded-full bg-[#a0a0a0]" />
+                <span className="font-mono text-sm text-[#a0a0a0]">Draft</span>
+              </motion.div>
+            )}
 
-          {project.status === 'planning' && (
-            <div className="flex items-center space-x-2 border border-[#3b82f6]/30 px-3 py-1.5 bg-[#3b82f6]/5">
-              <div className="w-2 h-2 rounded-full bg-[#60a5fa] animate-pulse" />
-              <span className="font-mono text-sm text-[#60a5fa]">Planning...</span>
-            </div>
-          )}
+            {project.status === 'planning' && (
+              <motion.div
+                key="planning"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.4, ease: "easeOut" }}
+                className="flex items-center space-x-2 border border-[#3b82f6]/30 px-3 py-1.5 bg-[#3b82f6]/5"
+              >
+                <div className="w-2 h-2 rounded-full bg-[#60a5fa] animate-pulse" />
+                <span className="font-mono text-sm text-[#60a5fa]">{project.pipelineStage || 'Planning...'}</span>
+              </motion.div>
+            )}
 
-          {['generating', 'building'].includes(project.status) && (
-            <div className="flex items-center space-x-2 border border-[#eab308]/30 px-3 py-1.5 bg-[#eab308]/5">
-              <div className="w-2 h-2 rounded-full bg-[#facc15] animate-pulse" />
-              <span className="font-mono text-sm text-[#facc15]">Building...</span>
-            </div>
-          )}
+            {['generating', 'building'].includes(project.status) && (
+              <motion.div
+                key="generating"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.4, ease: "easeOut" }}
+                className="flex flex-col space-y-2 flex-1 mr-4"
+              >
+                <div className="flex items-center space-x-2">
+                  <div className="w-2 h-2 rounded-full bg-[#60a5fa] animate-pulse" />
+                  <span className="font-mono text-sm text-[#60a5fa]">
+                    {project.pipelineStage || 'Generating...'}
+                  </span>
+                </div>
+                <div className="font-mono text-xs text-[#a0a0a0]">
+                  {(() => {
+                    const stage = project.pipelineStage;
+                    if (stage === "Planning...") return "████░░░░░░ 10%";
+                    if (stage === "Designing Architecture...") return "█████░░░░░ 20%";
+                    if (stage === "Generating Files...") return "███████░░░ 55%";
+                    if (stage === "Installing Dependencies...") return "████████░░ 70%";
+                    if (stage === "Building Application...") return "█████████░ 85%";
+                    if (stage === "Starting Preview...") return "█████████░ 92%";
+                    if (stage === "Verifying Preview...") return "██████████ 98%";
+                    if (stage === "Repairing...") return "█████████░ 85%";
+                    return "████░░░░░░ 10%";
+                  })()}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Delete Button */}
           <button

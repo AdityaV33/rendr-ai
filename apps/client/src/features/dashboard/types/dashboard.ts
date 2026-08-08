@@ -5,6 +5,7 @@ export interface Project {
   framework: string;
   status: string;
   files: string[];
+  pipelineStage?: string;
   createdAt: string;
   updatedAt: string;
 }

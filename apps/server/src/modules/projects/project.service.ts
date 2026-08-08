@@ -24,6 +24,16 @@ export async function getProjects(owner: string) {
   });
 }
 
+export async function cleanupOrphanedProjects() {
+  const orphaned = await ProjectModel.updateMany(
+    { status: { $in: ["generating", "building", "repairing"] } },
+    { $set: { status: "failed", pipelineStage: "Failed (Server Restarted)" } }
+  );
+  if (orphaned.modifiedCount > 0) {
+    console.log(`[ProjectService] Cleaned up ${orphaned.modifiedCount} orphaned projects.`);
+  }
+}
+
 export async function getProjectById(
   owner: string,
   projectId: string
@@ -94,14 +104,61 @@ export async function generateProject(owner: string, projectId: string) {
       prompt: project.prompt,
       projectId: projectId,
       onEvent: (event) => {
+        // Fire-and-forget DB update for live status tracking
+        const updatePromise = (async () => {
+          let stage: string | null = null;
+          let timestampKey: string | null = null;
+
+          switch (event.type) {
+            case "planner_started":
+              stage = "Planning...";
+              timestampKey = "planningStartedAt";
+              break;
+            case "architect_started":
+              stage = "Designing Architecture...";
+              timestampKey = "architectStartedAt";
+              break;
+            case "generator_started":
+              stage = "Generating Files...";
+              timestampKey = "generationStartedAt";
+              break;
+            case "install_started":
+              stage = "Installing Dependencies...";
+              break;
+            case "build_started":
+              stage = "Building Application...";
+              break;
+            case "preview_started":
+              stage = "Starting Preview...";
+              timestampKey = "previewStartedAt";
+              break;
+            case "verify_started":
+              stage = "Verifying Preview...";
+              break;
+            case "repair_started":
+              project.status = "generating"; // In case it was previously ready/failed? Wait, it's always generating.
+              stage = "Repairing...";
+              break;
+          }
+
+          if (stage) {
+            project.pipelineStage = stage;
+            
+            if (timestampKey) {
+              if (!project.pipelineTimestamps) project.pipelineTimestamps = {};
+              project.pipelineTimestamps[timestampKey] = new Date();
+              project.markModified('pipelineTimestamps');
+            }
+            await project.save();
+          }
+        })().catch(err => console.error("[Pipeline DB Error]", err));
+        
         if (event.type === "architect_completed" && event.state.architecture) {
           console.log("\n-----------------------------------");
           console.log("Runtime Branch Started");
           console.log("-----------------------------------");
           
           const startRuntime = performance.now();
-          // We no longer call prepareWorkspace (copyTemplate) here to avoid a race condition 
-          // with GeneratorV2's parallel pnpm install.
           runtimeTime = performance.now() - startRuntime;
         }
       }
@@ -115,8 +172,6 @@ export async function generateProject(owner: string, projectId: string) {
 
     console.log("\n[Pipeline] Synchronizing Runtime Workspace");
 
-    console.log("\n[Pipeline] Synchronizing Runtime Workspace");
-
     const startSync = performance.now();
 
     project.aiPlan = projectPlan;
@@ -126,6 +181,10 @@ export async function generateProject(owner: string, projectId: string) {
     project.files = generatedProject.files.map(f => f.path);
     project.framework = generatedProject.project.framework as import("./project.model.js").ProjectFramework;
     project.status = "ready";
+    project.pipelineStage = "Ready";
+    if (!project.pipelineTimestamps) project.pipelineTimestamps = {};
+    project.pipelineTimestamps["completedAt"] = new Date();
+    project.markModified('pipelineTimestamps');
 
     await project.save();
     
@@ -176,6 +235,7 @@ export async function generateProject(owner: string, projectId: string) {
     return project;
   } catch (error) {
     project.status = "failed";
+    project.pipelineStage = "Failed";
     await project.save();
     
     // AI Failure / Runtime Failure Cleanup

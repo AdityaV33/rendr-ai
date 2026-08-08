@@ -98,13 +98,13 @@ export async function generateProjectController(
 ) {
   const projectId = req.params.projectId as string;
 
-  const project =
-    await projectService.generateProject(
-      req.user.id,
-      projectId,
-    );
+  // Fire and forget the background generation
+  projectService.generateProject(
+    req.user.id,
+    projectId,
+  ).catch(err => console.error(`Background generation failed for project ${projectId}`, err));
 
-  return res.status(200).json(
-    toProjectResponse(project),
-  );
+  return res.status(202).json({
+    message: "Generation started in the background",
+  });
 }

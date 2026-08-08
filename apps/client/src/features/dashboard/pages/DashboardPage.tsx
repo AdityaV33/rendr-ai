@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { motion } from "framer-motion";
+import toast from "react-hot-toast";
 
 import CreateProjectDialog from "../components/CreateProjectDialog";
 import DashboardHeader from "../components/DashboardHeader";
@@ -71,6 +72,45 @@ const DashboardPage = () => {
     void fetchProjects();
   }, [fetchProjects]);
 
+  const prevProjectsRef = useRef(projects);
+
+  useEffect(() => {
+    // Check for transitions
+    projects.forEach(project => {
+      const prev = prevProjectsRef.current.find(p => p.id === project.id);
+      if (prev && prev.status === "generating" && project.status === "ready") {
+        toast.success(
+          <div className="flex flex-col">
+            <span className="font-mono font-bold tracking-tight">✓ Application ready!</span>
+            <span className="font-mono text-sm text-[#a0a0a0] mt-1">Your preview has finished building.</span>
+          </div>, 
+          { duration: 5000, style: { background: '#050505', color: '#f5f5f5', border: '1px solid #333' }, icon: null }
+        );
+      }
+      
+      if (prev && prev.status === "generating" && project.status === "failed") {
+        toast.error(
+          <div className="flex flex-col">
+            <span className="font-mono font-bold tracking-tight">✕ Generation failed.</span>
+            <span className="font-mono text-sm text-[#a0a0a0] mt-1">We could not build your application.</span>
+          </div>, 
+          { duration: 5000, style: { background: '#050505', color: '#f5f5f5', border: '1px solid #333' }, icon: null }
+        );
+      }
+    });
+
+    prevProjectsRef.current = projects;
+
+    // Polling logic
+    const isGenerating = projects.some(p => p.status === "generating");
+    if (isGenerating) {
+      const timer = setInterval(() => {
+        void fetchProjects();
+      }, 3000);
+      return () => clearInterval(timer);
+    }
+  }, [projects, fetchProjects]);
+
   const handleCreateProject = async (
     name: string,
     prompt: string,
@@ -79,6 +119,19 @@ const DashboardPage = () => {
       name,
       prompt,
     });
+    setDialogOpen(false);
+    
+    const currentProjects = useDashboardStore.getState().projects;
+    const stillGenerating = currentProjects.some(p => p.status === "generating");
+    if (stillGenerating) {
+      toast(
+        <div className="flex flex-col gap-2">
+          <span className="font-mono font-bold tracking-tight">⌛ Building your application...</span>
+          <span className="font-mono text-sm text-[#a0a0a0]">This usually takes around 2 minutes.<br/>We'll let you know when it's ready.</span>
+        </div>,
+        { id: "building-toast", duration: 8000, style: { background: '#050505', color: '#f5f5f5', border: '1px solid #333' } }
+      );
+    }
   };
 
   return (

@@ -104,7 +104,12 @@ export class GateRunnerNode {
 
     // 2. Compile Gate
     const framework = currentState.architecture?.stack?.frontendFramework;
-    if (framework !== "vanilla-js") {
+    const buildCmd = currentState.generatedFiles?.commands.build || "npm run build";
+    
+    // Optimization: Skip standalone Compile Gate if the build script already runs tsc (e.g. tsc -b)
+    const shouldRunCompileGate = framework !== "vanilla-js" && !buildCmd.includes("tsc");
+    
+    if (shouldRunCompileGate) {
       let compileResult = await runCompile();
       while (!compileResult.success) {
         try {
@@ -118,9 +123,15 @@ export class GateRunnerNode {
           return currentState;
         }
       }
+    } else {
+      if (framework !== "vanilla-js") {
+        console.log("[GateRunner] Skipping standalone Compile Gate (already covered by Build Gate)");
+      }
     }
 
     // 3. Build Gate
+    emit("build_started");
+    const startBuild = performance.now();
     let buildResult = await runBuild();
     while (!buildResult.success) {
       try {
@@ -143,9 +154,40 @@ export class GateRunnerNode {
       }
       
       console.log(`[GateRunner] Launching preview...`);
+      emit("preview_started");
       const runtimeState = await startPreviewOnly(currentState.project.id, devCmd);
       if (runtimeState?.preview) {
         currentState.previewUrl = runtimeState.preview.url;
+        
+        emit("verify_started");
+        console.log(`[GateRunner] Verifying preview at ${currentState.previewUrl}...`);
+        
+        // Wait up to 10 seconds for the preview server to respond
+        const maxWaitMs = 10000;
+        const pollIntervalMs = 500;
+        const startTime = Date.now();
+        let verified = false;
+        
+        while (Date.now() - startTime < maxWaitMs) {
+          try {
+            const res = await fetch(currentState.previewUrl);
+            if (res.ok) {
+              verified = true;
+              break;
+            }
+          } catch (e) {
+            // Ignore connection refused while server is starting
+          }
+          await new Promise(r => setTimeout(r, pollIntervalMs));
+        }
+        
+        if (!verified) {
+          console.warn(`[GateRunner] Preview server at ${currentState.previewUrl} did not respond within ${maxWaitMs}ms.`);
+          // We don't fail the gate here, as Vite might just be slow to bundle the first request, 
+          // but we tried our best to verify.
+        } else {
+          console.log(`[GateRunner] Preview successfully verified!`);
+        }
       }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {

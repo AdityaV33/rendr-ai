@@ -171,6 +171,11 @@ export class ModelSchedulerService {
     if (!model) return;
 
     model.activeRequests = Math.max(0, model.activeRequests - 1);
+    
+    if (model.status === "coolingDown") {
+      return;
+    }
+
     model.successCount += 1;
     model.consecutiveFailures = 0; // Reset consecutive failures on success
     model.status = "available";
@@ -238,7 +243,7 @@ export class ModelSchedulerService {
       } else if (isTimeout) {
         model.timeoutCount += 1;
         reason = "Request Timeout";
-        // No cooldown
+        cooldownMs = this.baseCooldownMs;
       } else if (isNetworkFailure) {
         reason = "Network Failure";
         // No cooldown

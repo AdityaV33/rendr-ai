@@ -25,6 +25,8 @@ export interface Project {
   architecturePlan: ArchitecturePlan | null;
   generatedProject: GeneratedProject | null;
   files: string[];
+  pipelineStage: string | null;
+  pipelineTimestamps: Record<string, Date> | null;
 
   createdAt: Date;
   updatedAt: Date;
@@ -87,6 +89,16 @@ const projectSchema = new Schema<Project>(
     files: {
       type: [String],
       default: [],
+    },
+
+    pipelineStage: {
+      type: String,
+      default: null,
+    },
+
+    pipelineTimestamps: {
+      type: Schema.Types.Mixed,
+      default: null,
     },
   },
   {
