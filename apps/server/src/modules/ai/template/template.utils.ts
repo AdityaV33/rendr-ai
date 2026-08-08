@@ -9,6 +9,7 @@ const frameworkMap: Record<string, SupportedFramework> = {
   'Vanilla JS': 'vanilla',
   'Vanilla': 'vanilla',
   'vanilla': 'vanilla',
+  'vanilla-js': 'vanilla',
   'HTML/CSS/JS': 'vanilla',
   'HTML/JS/CSS': 'vanilla'
 };

@@ -76,18 +76,18 @@ export async function updateWorkspaceFile(
       filePath,
     );
 
+  await filesystemService.createDirectory(path.dirname(resolved));
+
   await filesystemService.writeFile(
     resolved,
     content,
   );
 }
 
-export async function writeGeneratedProject(
-  projectId: string,
+async function writeProjectFiles(
+  workspacePath: string,
   generatedFiles: { path: string; content: string }[],
 ): Promise<void> {
-  const workspacePath = workspaceService.getWorkspacePath(projectId);
-
   const allNodes = await filesystemService.listDirectory(workspacePath, workspacePath);
   const templateFilePaths = new Set<string>();
 
@@ -118,14 +118,56 @@ export async function writeGeneratedProject(
 
     const dir = path.dirname(resolved);
     await filesystemService.createDirectory(dir);
-    await filesystemService.writeFile(resolved, file.content);
+    
+    let isChanged = true;
+    try {
+      const existingContent = await filesystemService.readFile(resolved);
+      if (existingContent === file.content) {
+        isChanged = false;
+      }
+    } catch {
+      // File doesn't exist yet
+    }
+
+    if (isChanged) {
+      await filesystemService.writeFile(resolved, file.content);
+    }
   }
+
+  const deletedFiles: string[] = [];
 
   for (const tPath of templateFilePaths) {
     if (!generatedFilePaths.has(tPath)) {
-      preservedFiles.push(tPath);
+      if (tPath.startsWith("src/") || tPath.startsWith("tests/") || tPath === "playwright.config.ts") {
+        const resolved = resolveWorkspaceFilePath(workspacePath, tPath);
+        await filesystemService.removeFile(resolved);
+        deletedFiles.push(tPath);
+      } else {
+        preservedFiles.push(tPath);
+      }
     }
   }
 
   console.log(`[Runtime] Workspace Synchronized: ${generatedFiles.length} generated, ${overwrittenFiles.length} overwritten, ${preservedFiles.length} preserved`);
+  
+  if (deletedFiles.length > 0) {
+    console.log(`[Runtime] Cleanup: Deleted ${deletedFiles.length} stale generated files`);
+    deletedFiles.forEach(f => console.log(`  - ${f}`));
+  }
+}
+
+export async function writeGeneratedProject(
+  projectId: string,
+  generatedFiles: { path: string; content: string }[],
+): Promise<void> {
+  const workspacePath = workspaceService.getWorkspacePath(projectId);
+  await writeProjectFiles(workspacePath, generatedFiles);
+}
+
+export async function writeValidationProject(
+  projectId: string,
+  generatedFiles: { path: string; content: string }[],
+): Promise<void> {
+  const workspacePath = workspaceService.getValidationWorkspacePath(projectId);
+  await writeProjectFiles(workspacePath, generatedFiles);
 }

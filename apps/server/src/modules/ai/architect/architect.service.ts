@@ -23,8 +23,19 @@ export class ArchitectService {
    * Receives a validated ProjectPlan and produces a validated ArchitecturePlan.
    * If the first Gemini response fails schema validation, retries exactly once.
    */
-  async architect(projectPlan: ProjectPlan): Promise<ArchitecturePlan> {
-    const prompt = `Based on the following product requirements (ProjectPlan), design the complete system architecture and file structure.\n\nProjectPlan:\n${JSON.stringify(projectPlan, null, 2)}`;
+  public async designArchitecture(
+    projectPlan: ProjectPlan,
+    feedback?: string
+  ): Promise<ArchitecturePlan> {
+    let prompt = `Based on the following ProjectPlan, design the software architecture and component hierarchy.
+Return the output ONLY as valid JSON matching the schema.
+
+ProjectPlan:
+${JSON.stringify(projectPlan, null, 2)}`;
+
+    if (feedback) {
+      prompt += `\n\nCRITICAL FEEDBACK FROM PREVIOUS ATTEMPT:\n${feedback}\n\nYou MUST fix this in your new architecture.`;
+    }
     let lastError: unknown;
 
     for (let attempt = 0; attempt <= MAX_VALIDATION_RETRIES; attempt++) {
@@ -33,7 +44,7 @@ export class ArchitectService {
           prompt,
           ARCHITECTURE_PLAN_GEMINI_SCHEMA,
           ARCHITECT_SYSTEM_PROMPT,
-          { temperature: 0.1 } // Very low temperature for architectural consistency
+          { temperature: 0.1, taskName: "Architect" } // Very low temperature for architectural consistency
         );
 
         // Validate with Zod — no raw Gemini response leaves this service

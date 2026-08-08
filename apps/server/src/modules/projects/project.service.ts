@@ -1,4 +1,4 @@
-import { ProjectModel, ProjectFramework } from "./project.model.js";
+import { ProjectModel } from "./project.model.js";
 import {
   CreateProjectInput, UpdateProjectInput,} from "./project.validation.js";
 import { aiService } from "../ai/index.js";
@@ -73,15 +73,8 @@ export async function deleteProject(
   return project;
 }
 
-export async function generateProject(
-  owner: string,
-  projectId: string,
-) {
-  const project = await ProjectModel.findOne({
-    owner,
-    _id: projectId,
-  });
-
+export async function generateProject(owner: string, projectId: string) {
+  const project = await ProjectModel.findOne({ owner, _id: projectId });
   if (!project) {
     throw new NotFoundError("Project not found");
   }
@@ -89,37 +82,110 @@ export async function generateProject(
   project.status = "generating";
   await project.save();
 
+  let runtimeTime = 0;
+  const startOverall = performance.now();
+
+  console.log("\n===================================");
+  console.log("Parallel Execution Started");
+  console.log("===================================");
+
   try {
-    console.log("\n[Pipeline] Planner Started");
-    console.log("[Pipeline] Architecture Generation Started");
-    console.log("[Pipeline] Generator Started");
+    const { projectPlan, architecturePlan, generatedProject, metrics } = await aiService.generate({ 
+      prompt: project.prompt,
+      projectId: projectId,
+      onEvent: (event) => {
+        if (event.type === "architect_completed" && event.state.architecture) {
+          console.log("\n-----------------------------------");
+          console.log("Runtime Branch Started");
+          console.log("-----------------------------------");
+          
+          const startRuntime = performance.now();
+          // We no longer call prepareWorkspace (copyTemplate) here to avoid a race condition 
+          // with GeneratorV2's parallel pnpm install.
+          runtimeTime = performance.now() - startRuntime;
+        }
+      }
+    });
 
-    const { projectPlan, architecturePlan, generatedProject } = await aiService.generate({ prompt: project.prompt });
+    const aiTime = performance.now() - startOverall;
 
-    console.log("[Pipeline] Generator Finished");
-    console.log("[Pipeline] Persisting to Database");
+    console.log("\n-----------------------------------");
+    console.log("Generation Complete");
+    console.log("-----------------------------------");
+
+    console.log("\n[Pipeline] Synchronizing Runtime Workspace");
+
+    console.log("\n[Pipeline] Synchronizing Runtime Workspace");
+
+    const startSync = performance.now();
 
     project.aiPlan = projectPlan;
     project.architecturePlan = architecturePlan;
     project.generatedProject = generatedProject;
     
-    // Convert GeneratedProject files[] to string[] for the Project.files schema
     project.files = generatedProject.files.map(f => f.path);
-    project.framework = generatedProject.project.framework as ProjectFramework;
-
-    console.log(`[Pipeline] Resolved Framework: ${project.framework} | Language: ${generatedProject.project.language}`);
-
+    project.framework = generatedProject.project.framework as import("./project.model.js").ProjectFramework;
     project.status = "ready";
 
     await project.save();
+    
+    const syncTime = performance.now() - startSync;
 
-    console.log("[Pipeline] Project Saved");
-    console.log("[Pipeline] Runtime Starting");
+    // The GateRunnerNode will exclusively handle starting the preview and populating runtimeState.
+    const runtimeState = runtimeManagerService.getRuntimeState(projectId);
+    if (runtimeState?.preview) {
+      console.log("[Runtime] Preview Started");
+    } else {
+      console.log("[Runtime] Preview Failed to Start");
+    }
+
+    const totalTime = performance.now() - startOverall;
+    
+    // Telemetry Calculations
+    const aiFiles = generatedProject.files.filter(f => !f.path.includes('node_modules') && f.content && f.content.length > 0);
+    const aiFileCount = aiFiles.length;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const largestFile = aiFiles.reduce((max, f) => f.content!.length > (max.content?.length || 0) ? f : max, {} as any);
+    const avgFileSize = aiFiles.reduce((sum, f) => sum + f.content!.length, 0) / (aiFileCount || 1);
+    const requestedFeatures = projectPlan.features.length;
+    const implementedWorkflows = projectPlan.pages.length;
+    const deferredWorkflows = projectPlan.deferredWorkflows?.length || 0;
+
+    console.log("\n===================================");
+    console.log("Telemetry & Benchmarks");
+    console.log("===================================");
+    console.log(`Architecture Complexity: ${projectPlan.complexity}`);
+    console.log(`Requested features: ${requestedFeatures}`);
+    console.log(`Implemented workflows: ${implementedWorkflows}`);
+    console.log(`Deferred workflows: ${deferredWorkflows}`);
+    console.log(`AI file count: ${aiFileCount}`);
+    console.log(`Average file size: ${(avgFileSize / 1024).toFixed(1)} KB`);
+    console.log(`Largest generated file: ${largestFile.path} (${((largestFile.content?.length || 0) / 1024).toFixed(1)} KB)`);
+    type PipelineMetrics = {
+      architectRetries?: number;
+    };
+    const typedMetrics = metrics as PipelineMetrics;
+    console.log(`Architecture retries: ${typedMetrics?.architectRetries || 0}`);
+    console.log("\n===================================");
+    console.log(`AI Branch: ${aiTime.toFixed(0)}ms`);
+    console.log(`Runtime Prep: ${runtimeTime.toFixed(0)}ms`);
+    console.log(`Synchronization & Install: ${syncTime.toFixed(0)}ms`);
+    console.log(`Total Pipeline: ${totalTime.toFixed(0)}ms`);
+    console.log("===================================\n");
 
     return project;
   } catch (error) {
     project.status = "failed";
     await project.save();
+    
+    // AI Failure / Runtime Failure Cleanup
+    try {
+      runtimeManagerService.stopRuntime(projectId);
+      await workspaceService.deleteWorkspace(projectId);
+    } catch (cleanupErr) {
+      console.error(`[Pipeline] Failed to clean up workspace after error:`, cleanupErr);
+    }
+
     throw error;
   }
 }

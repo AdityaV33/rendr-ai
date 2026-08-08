@@ -22,8 +22,11 @@ export type ComponentPropType = "string" | "number" | "boolean" | "() => void" |
 
 export interface ComponentContract {
   name: string;
-  description: string;
+  importPath: string;
+  publicAPI?: string[];
+
   exportType: "default" | "named";
+  exports: string[];
   props: Array<{
     name: string;
     type: ComponentPropType;
@@ -31,7 +34,7 @@ export interface ComponentContract {
   }>;
 }
 
-export interface CompositionTarget extends Omit<ComponentContract, "description"> {
+export interface CompositionTarget extends ComponentContract {
   importPath: string;
 }
 
@@ -42,7 +45,7 @@ export interface GeneratorContext {
   relevantPages: ProjectPlan["pages"];
   relevantComponents: ProjectPlan["components"];
   compositionTargets?: CompositionTarget[];
-  componentContracts?: Record<string, Omit<ComponentContract, "description">>;
+  componentContracts?: Record<string, ComponentContract>;
   architectureNotes?: string;
   currentBatch: ArchitecturePlan["fileStructure"];
 }

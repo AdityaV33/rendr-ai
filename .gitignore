@@ -21,3 +21,6 @@ apps/server/runtime/
 *.tsbuildinfo
 .eslintcache
 .vite/
+
+# Archives
+archive/

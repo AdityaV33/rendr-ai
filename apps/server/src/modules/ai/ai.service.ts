@@ -1,12 +1,14 @@
+import crypto from "node:crypto";
 import { GeminiService } from "./clients/gemini.service.js";
-import { PlannerService } from "./planner/planner.service.js";
-import { ArchitectService } from "./architect/architect.service.js";
 import type { ArchitecturePlan } from "./types/architecture-plan.types.js";
 import type { ProjectPlan } from "./types/project-plan.types.js";
 import type { GeneratedProject } from "./types/generated-project.types.js";
-import { GeneratorService } from "./generator/generator.service.js";
-import { TemplateEngine } from "./template/template.engine.js";
-import { BadRequestError } from "../lib/http-error.js";
+import { BadRequestError, InternalServerError } from "../lib/http-error.js";
+import { createGenerationGraph } from "./graph/factory.js";
+import type { GenerationGraph } from "./graph/graph.js";
+import type { GenerationState } from "./graph/state.js";
+import { ModelSchedulerService } from "./scheduler/index.js";
+import { devServerManager } from "../runtime/dev-server.manager.js";
 
 /**
  * AiService is the top-level orchestrator for all AI operations.
@@ -14,46 +16,104 @@ import { BadRequestError } from "../lib/http-error.js";
  */
 export class AiService {
   private readonly gemini: GeminiService;
-  private readonly planner: PlannerService;
-  private readonly architect: ArchitectService;
-  private readonly templateEngine: TemplateEngine;
-  private readonly generator: GeneratorService;
+  private readonly graph: GenerationGraph;
 
   constructor() {
-    this.gemini = new GeminiService();
-    this.planner = new PlannerService(this.gemini);
-    this.architect = new ArchitectService(this.gemini);
-    this.templateEngine = new TemplateEngine();
-    this.generator = new GeneratorService(this.gemini, this.templateEngine);
+    const scheduler = new ModelSchedulerService();
+    this.gemini = new GeminiService(scheduler);
+    this.graph = createGenerationGraph(this.gemini);
   }
 
-  async generate(data: { prompt?: string }): Promise<{ projectPlan: ProjectPlan; architecturePlan: ArchitecturePlan; generatedProject: GeneratedProject }> {
+  async generate(data: { prompt?: string, projectId?: string, onEvent?: (event: import("./graph/types.js").GraphEvent) => void }): Promise<{ projectPlan: ProjectPlan; architecturePlan: ArchitecturePlan; generatedProject: GeneratedProject; metrics: unknown }> {
     if (!data.prompt) {
       throw new BadRequestError("A prompt is required.");
     }
 
-    const startTotal = performance.now();
 
-    const startPlanner = performance.now();
-    const projectPlan = await this.planner.plan(data.prompt);
-    console.log(`[Pipeline] Planner Finished (${(performance.now() - startPlanner).toFixed(0)}ms)`);
+    const initialState: GenerationState = {
+      prompt: data.prompt,
+      project: {
+        id: data.projectId || crypto.randomUUID(),
+        framework: "",
+      },
+      gateAttempts: {},
+      currentStep: "planner",
+      status: "idle",
+      errors: [],
+      executionHistory: [],
+      checkpoints: [],
+      metrics: {
+        plannerMs: 0,
+        architectMs: 0,
+        generatorMs: 0,
+        validationMs: 0,
+        repairMs: 0,
+        totalMs: 0,
+        architectRetries: 0,
+      }
+    };
 
-    const startArchitect = performance.now();
-    const architecturePlan = await this.architect.architect(projectPlan);
-    console.log(`[Pipeline] Architecture Finished (${(performance.now() - startArchitect).toFixed(0)}ms)`);
-
-    const startGenerator = performance.now();
-    const generatedProject = await this.generator.generateProject(projectPlan, architecturePlan);
-    console.log(`[Pipeline] Generator Finished (${(performance.now() - startGenerator).toFixed(0)}ms)`);
+    const finalState = await this.graph.execute(initialState, (event) => {
+      // 1. Log the event internally
+      if (event.type.endsWith("_started") && event.type !== "repair_started") {
+        const node = event.type.split("_")[0];
+        console.log(`[Pipeline] ${node.charAt(0).toUpperCase() + node.slice(1)} Started`);
+      } else if (event.type === "repair_started") {
+        console.log(`[Pipeline] Gate Repair Cycle Started`);
+      } else if (event.type.endsWith("_completed")) {
+        const node = event.type.split("_")[0];
+        const duration = event.durationMs ? `(${event.durationMs.toFixed(0)}ms)` : "";
+        console.log(`[Pipeline] ${node.charAt(0).toUpperCase() + node.slice(1)} Finished ${duration}`);
+      }
+      
+      // 2. Forward to external listener if provided
+      if (data.onEvent) {
+        data.onEvent(event);
+      }
+    });
     
-    console.log(`[Pipeline] AI Pipeline Total (${(performance.now() - startTotal).toFixed(0)}ms)`);
+    // Stop the dev server if it was started during validation
+    devServerManager.stopServer(initialState.project.id);
 
-    return { projectPlan, architecturePlan, generatedProject };
+    if (finalState.validationResult && !finalState.validationResult.passed) {
+      const issues = JSON.stringify(finalState.validationResult.issues, null, 2);
+      throw new InternalServerError(`Pipeline execution failed validation after max repair attempts.\n\nValidation Report:\n${issues}`);
+    }
+
+    if (!finalState.plan || !finalState.architecture || !finalState.generatedFiles) {
+      throw new InternalServerError("Pipeline execution failed to generate required artifacts.");
+    }
+
+    const _schedulerMetrics = this.gemini.getSchedulerMetrics();
+    const repairAttempts = Object.values(finalState.gateAttempts || {}).reduce((a, b) => a + b, 0);
+
+console.log(`
+========================================
+[BENCHMARK] Phase 7 Pipeline Complete
+========================================
+Gate Repairs:           ${repairAttempts}
+Total Time:             ${(finalState.metrics.totalMs / 1000).toFixed(1)} s
+========================================
+[BENCHMARK] Pipeline Breakdown
+========================================
+Planner:                ${(finalState.metrics.plannerMs / 1000).toFixed(1)} s
+Architect:              ${(finalState.metrics.architectMs / 1000).toFixed(1)} s
+Generator:              ${(finalState.metrics.generatorMs / 1000).toFixed(1)} s
+GateRunner:             ${(finalState.metrics.validationMs / 1000).toFixed(1)} s
+========================================
+`);
+
+    return { 
+      projectPlan: finalState.plan, 
+      architecturePlan: finalState.architecture, 
+      generatedProject: finalState.generatedFiles,
+      metrics: finalState.metrics
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as unknown as { projectPlan: ProjectPlan; architecturePlan: ArchitecturePlan; generatedProject: GeneratedProject; metrics: any };
   }
 
   async refine(_data: unknown) {
-    // Placeholder — will be implemented in a future milestone
-    return { status: "placeholder", message: "refine method not implemented" };
+    throw new Error("Method not implemented.");
   }
 }
 

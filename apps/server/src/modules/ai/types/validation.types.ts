@@ -1,4 +1,5 @@
 import { z } from "zod";
-import { validationResultSchema } from "../schemas/validation.schema.js";
+import { validationResultSchema, validationIssueSchema } from "../schemas/validation.schema.js";
 
+export type ValidationIssue = z.infer<typeof validationIssueSchema>;
 export type ValidationResult = z.infer<typeof validationResultSchema>;

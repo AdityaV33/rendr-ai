@@ -64,8 +64,9 @@ const BuilderPage = () => {
     try {
       if (!currentProject.generatedProject) {
         await generateProject(projectId);
+      } else {
+        await startRuntime(projectId);
       }
-      await startRuntime(projectId);
       await loadWorkspaceTree();
     } catch (err) {
       console.error(err);

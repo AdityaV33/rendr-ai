@@ -18,106 +18,50 @@ import {
   type RuntimeState,
 } from "./runtime.types.js";
 
-export async function startRuntime(
-  owner: string,
+export { installDependencies } from "./install.service.js";
+
+export async function prepareWorkspace(
   projectId: string,
-): Promise<RuntimeState> {
-  const project =
-    await projectService.requireProject(
-      owner,
-      projectId,
-    );
-
-  if (!project.framework) {
-    throw new InternalServerError(
-      "Project framework has not been determined.",
-    );
-  }
-
-  console.log(`[Runtime] Framework: ${project.framework}`);
+  framework: string,
+): Promise<void> {
+  console.log(`[Runtime] Framework: ${framework}`);
 
   let workspaceCreated = false;
 
-  if (
-    !(
-      await workspaceService.workspaceExists(
-        projectId,
-      )
-    )
-  ) {
-    await workspaceService.createWorkspace(
-      projectId,
-    );
+  if (!(await workspaceService.workspaceExists(projectId))) {
+    await workspaceService.createWorkspace(projectId);
     console.log("[Runtime] Workspace Created");
-
     workspaceCreated = true;
   }
 
   if (workspaceCreated) {
-    await templateService.copyTemplate(
-      projectId,
-      project.framework,
-    );
+    await templateService.copyTemplate(projectId, framework);
     console.log("[Runtime] Template Synchronized");
   }
 
-  // Always write the latest AI generated files to the workspace, 
-  // even if the workspace already existed from a previous run or failed build.
-  if (project.generatedProject?.files) {
-    await workspaceFileService.writeGeneratedProject(
-      projectId,
-      project.generatedProject.files,
-    );
+  if (!runtimeService.hasRuntime(projectId)) {
+    runtimeService.initializeRuntime(projectId);
   }
+}
 
-  if (
-    runtimeService.hasRuntime(projectId)
-  ) {
-    return runtimeService.getRuntimeState(
-      projectId,
-    )!;
-  }
-
-  const runtime =
-    runtimeService.initializeRuntime(
-      projectId,
-    );
-
+export async function startPreviewOnly(
+  projectId: string,
+  devCommand: string
+): Promise<RuntimeState> {
   try {
-    let tStart = performance.now();
-    runtimeService.updateRuntimeStatus(
-      projectId,
-      RuntimeStatus.INSTALLING,
-    );
-    console.log("[Runtime] Installing Dependencies");
-
-    const installResult =
-      await installDependencies(
-        projectId,
-        project.generatedProject!.commands.install,
-      );
-
-    console.log(`[Runtime] Dependencies Installed (${(performance.now() - tStart).toFixed(0)}ms)`);
-
-    if (!installResult.success) {
-      throw new InternalServerError(
-        `Failed to install project dependencies.\n\nExit Code: ${installResult.exitCode}\n\nSTDOUT:\n${installResult.stdout}\n\nSTDERR:\n${installResult.stderr}`
-      );
-    }
-
-    // Skipping build phase for faster preview startup
-    // Project compilation will be handled lazily by Vite HMR
-
-    tStart = performance.now();
-    runtimeService.updateRuntimeStatus(
-      projectId,
-      RuntimeStatus.STARTING,
-    );
+    const tStart = performance.now();
+    runtimeService.updateRuntimeStatus(projectId, RuntimeStatus.STARTING);
     console.log("[Runtime] Preview Starting");
+
+    const existingRuntime = runtimeService.getRuntimeState(projectId);
+    if (existingRuntime?.preview) {
+      console.log("[Runtime] Stopping existing preview before starting new one");
+      stopPreview(existingRuntime.preview);
+    }
 
     const preview = await startPreview(
       projectId,
-      project.generatedProject?.commands.dev ?? "npm run dev",
+      devCommand,
       (code, port) => {
         const current = runtimeService.getRuntimeState(projectId);
         if (current && current.preview && current.preview.port === port) {
@@ -131,37 +75,57 @@ export async function startRuntime(
 
     console.log(`[Runtime] Preview Ready (${(performance.now() - tStart).toFixed(0)}ms)`);
 
-    runtimeService.updateRuntime(
-      projectId,
-      {
-        preview,
-      },
-    );
-
-    runtimeService.updateRuntimeStatus(
-      projectId,
-      RuntimeStatus.READY,
-    );
+    runtimeService.updateRuntime(projectId, { preview });
+    runtimeService.updateRuntimeStatus(projectId, RuntimeStatus.READY);
     console.log("[Runtime] Preview Ready");
 
-    // Persist project status as ready in the database
-    await projectService.updateProjectStatus(
-      projectId,
-      "ready",
-    );
-
-    return (
-      runtimeService.getRuntimeState(
-        projectId,
-      ) ?? runtime
-    );
+    return runtimeService.getRuntimeState(projectId)!;
   } catch (error) {
-    runtimeService.removeRuntime(
-      projectId,
-    );
-
+    runtimeService.removeRuntime(projectId);
     throw error;
   }
+}
+
+export async function startRuntime(
+  owner: string,
+  projectId: string,
+): Promise<RuntimeState> {
+  const project = await projectService.requireProject(owner, projectId);
+
+  if (!project.framework) {
+    throw new InternalServerError("Project framework has not been determined.");
+  }
+
+  await prepareWorkspace(projectId, project.framework);
+
+  if (project.generatedProject?.files) {
+    await workspaceFileService.writeGeneratedProject(
+      projectId,
+      project.generatedProject.files,
+    );
+  }
+  
+  try {
+    const installCommand = project.generatedProject?.commands.install ?? "npm install";
+    const tStart = performance.now();
+    runtimeService.updateRuntimeStatus(projectId, RuntimeStatus.INSTALLING);
+    console.log("[Runtime] Installing Dependencies");
+
+    const installResult = await installDependencies(projectId, installCommand);
+
+    console.log(`[Runtime] Dependencies Installed (${(performance.now() - tStart).toFixed(0)}ms)`);
+
+    if (!installResult.success) {
+      throw new InternalServerError(
+        `Failed to install project dependencies.\n\nExit Code: ${installResult.exitCode}\n\nSTDOUT:\n${installResult.stdout}\n\nSTDERR:\n${installResult.stderr}`
+      );
+    }
+  } catch (error) {
+    runtimeService.removeRuntime(projectId);
+    throw error;
+  }
+
+  return startPreviewOnly(projectId, project.generatedProject?.commands.dev ?? "npm run dev");
 }
 
 export function stopRuntime(

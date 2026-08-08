@@ -84,9 +84,6 @@ export const useDashboardStore =
           projects: get().projects.map(p => p.id === project.id ? project : p),
         });
 
-        // Trigger runtime
-        await dashboardService.startRuntime(project.id);
-
         set({
           loading: false,
         });

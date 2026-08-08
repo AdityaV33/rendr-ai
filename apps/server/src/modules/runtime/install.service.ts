@@ -13,19 +13,10 @@ import crypto from "node:crypto";
 import path from "node:path";
 import * as fs from "node:fs/promises";
 
-export async function installDependencies(
-  projectId: string,
+export async function installDependenciesInWorkspace(
+  workspacePath: string,
   command: string = "pnpm install",
 ): Promise<ProcessResult> {
-  if (!(await workspaceExists(projectId))) {
-    throw new BadRequestError(
-      "Workspace does not exist. Please initialize the runtime first.",
-    );
-  }
-
-  const workspacePath =
-    getWorkspacePath(projectId);
-
   const packageJsonPath = path.join(workspacePath, "package.json");
   const hashPath = path.join(workspacePath, ".package-hash");
   const nodeModulesPath = path.join(workspacePath, "node_modules");
@@ -44,7 +35,7 @@ export async function installDependencies(
     const nodeModulesExists = await fs.stat(nodeModulesPath).then(() => true).catch(() => false);
 
     if (currentHash === previousHash && nodeModulesExists) {
-      console.log(`[Runtime] Skipping dependency install (cached)`);
+      console.log(`[Runtime] Skipping dependency install (cached) in ${workspacePath}`);
       return { success: true, exitCode: 0, stdout: "Skipped dependency install (cached)", stderr: "" };
     }
 
@@ -53,7 +44,7 @@ export async function installDependencies(
       args.push("--ignore-workspace", "--ignore-scripts", "--config.confirmModulesPurge=false");
     }
 
-    console.log(`\nInstalling Dependencies\n\nExecuting:\n${command}\n`);
+    console.log(`\nInstalling Dependencies in ${workspacePath}\n\nExecuting:\n${command}\n`);
 
     const result = await runProcess(
       cmd,
@@ -68,7 +59,22 @@ export async function installDependencies(
     }
 
     return result;
-  } catch {
-    throw new InternalServerError("Failed to check or install dependencies.");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (err: any) {
+    throw new InternalServerError(`Failed to check or install dependencies in ${workspacePath}. Error: ${err.message}`);
   }
+}
+
+export async function installDependencies(
+  projectId: string,
+  command: string = "pnpm install",
+): Promise<ProcessResult> {
+  if (!(await workspaceExists(projectId))) {
+    throw new BadRequestError(
+      "Workspace does not exist. Please initialize the runtime first.",
+    );
+  }
+
+  const workspacePath = getWorkspacePath(projectId);
+  return installDependenciesInWorkspace(workspacePath, command);
 }

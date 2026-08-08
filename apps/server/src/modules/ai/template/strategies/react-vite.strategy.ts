@@ -35,6 +35,7 @@ export class ReactViteStrategy implements FrameworkTemplateStrategy {
         "vite": "^6.0.0",
         "tailwindcss": "^4.0.0",
         "@tailwindcss/vite": "^4.0.0",
+        "@playwright/test": "^1.40.0",
         ...context.devDependencies
       }
     };

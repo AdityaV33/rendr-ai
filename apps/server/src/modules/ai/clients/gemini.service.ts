@@ -2,53 +2,90 @@ import { GoogleGenAI } from "@google/genai";
 import { env } from "../../../config/env.js";
 import { InternalServerError } from "../../lib/http-error.js";
 
+import { ModelSchedulerService } from "../scheduler/model-scheduler.service.js";
+
 export class GeminiService {
   private readonly client: GoogleGenAI;
+  private readonly scheduler: ModelSchedulerService;
 
   // Encapsulated Gemini configuration
   private readonly generationConfig = {
     temperature: env.GEMINI_TEMPERATURE,
     maxOutputTokens: env.GEMINI_MAX_OUTPUT_TOKENS,
   };
-  private readonly requestTimeoutMs = env.GEMINI_TIMEOUT_MS;
+  private readonly defaultRequestTimeoutMs = env.GEMINI_TIMEOUT_MS;
 
-  constructor() {
+  // Metrics for Benchmarking
+  private totalApiCalls = 0;
+  private totalPromptTokens = 0;
+  private totalCompletionTokens = 0;
+  private maxTokenSplits = 0;
+
+  constructor(scheduler: ModelSchedulerService) {
+    this.scheduler = scheduler;
     this.client = new GoogleGenAI({
       apiKey: env.GEMINI_API_KEY,
     });
+  }
+
+  public getMetrics() {
+    return {
+      apiCalls: this.totalApiCalls,
+      promptTokens: this.totalPromptTokens,
+      completionTokens: this.totalCompletionTokens,
+      maxTokenSplits: this.maxTokenSplits
+    };
+  }
+
+  public recordMaxTokenSplit() {
+    this.maxTokenSplits++;
+  }
+
+  public getSchedulerMetrics() {
+    return this.scheduler.getMetrics();
+  }
+
+  public getHealthyModelCount(): number {
+    return this.scheduler.getHealthyModelCount();
   }
 
   /**
    * Generates unstructured text based on a given prompt.
    * Includes retry and timeout mechanisms.
    */
-  async generateText(prompt: string, systemInstruction?: string): Promise<string> {
-    try {
-      return await this.withRetry(async (activeModel) => {
-        const response = await this.withTimeout(
-          this.client.models.generateContent({
-            model: activeModel,
-            contents: prompt,
-            config: {
-              ...this.generationConfig,
-              systemInstruction,
-            },
-          })
-        );
+  async generateText(prompt: string, systemInstruction?: string, config?: { timeoutMs?: number; taskName?: string }): Promise<string> {
+    const timeoutMs = config?.timeoutMs || this.defaultRequestTimeoutMs;
+    const taskName = config?.taskName || "Text Generation";
+    
+    return this.executeWithScheduler(async (activeModel) => {
+      const response = await this.withTimeout(
+        this.client.models.generateContent({
+          model: activeModel,
+          contents: prompt,
+          config: {
+            ...this.generationConfig,
+            systemInstruction,
+          },
+        }),
+        timeoutMs
+      );
 
-        if (response.candidates?.[0]?.finishReason === "MAX_TOKENS") {
-          throw new Error("MAX_TOKENS_EXCEEDED");
-        }
+      this.totalApiCalls++;
+      if (response.usageMetadata) {
+        this.totalPromptTokens += response.usageMetadata.promptTokenCount || 0;
+        this.totalCompletionTokens += response.usageMetadata.candidatesTokenCount || 0;
+      }
 
-        if (!response.text) {
-          throw new Error("Empty response from Gemini API");
-        }
+      if (response.candidates?.[0]?.finishReason === "MAX_TOKENS") {
+        throw new Error("MAX_TOKENS_EXCEEDED");
+      }
 
-        return response.text;
-      });
-    } catch (error) {
-      this.handleError(error);
-    }
+      if (!response.text) {
+        throw new Error("Empty response from Gemini API");
+      }
+
+      return response.text;
+    }, taskName);
   }
 
   /**
@@ -58,38 +95,44 @@ export class GeminiService {
     prompt: string,
     responseSchema: object,
     systemInstruction?: string,
-    config?: { temperature?: number },
+    config?: { temperature?: number; timeoutMs?: number; taskName?: string },
   ): Promise<T> {
-    try {
-      return await this.withRetry(async (activeModel) => {
-        const response = await this.withTimeout(
-          this.client.models.generateContent({
-            model: activeModel,
-            contents: prompt,
-            config: {
-              ...this.generationConfig,
-              ...config,
-              systemInstruction,
-              responseMimeType: "application/json",
-              responseSchema,
-            },
-          })
-        );
+    const timeoutMs = config?.timeoutMs || this.defaultRequestTimeoutMs;
+    const taskName = config?.taskName || "Structured Generation";
+    
+    return this.executeWithScheduler(async (activeModel) => {
+      const response = await this.withTimeout(
+        this.client.models.generateContent({
+          model: activeModel,
+          contents: prompt,
+          config: {
+            ...this.generationConfig,
+            ...config,
+            systemInstruction,
+            responseMimeType: "application/json",
+            responseSchema,
+          },
+        }),
+        timeoutMs
+      );
 
-        if (response.candidates?.[0]?.finishReason === "MAX_TOKENS") {
-          console.warn("[GeminiService] Response truncated: MAX_TOKENS reached.");
-          throw new Error("MAX_TOKENS_EXCEEDED");
-        }
+      this.totalApiCalls++;
+      if (response.usageMetadata) {
+        this.totalPromptTokens += response.usageMetadata.promptTokenCount || 0;
+        this.totalCompletionTokens += response.usageMetadata.candidatesTokenCount || 0;
+      }
 
-        if (!response.text) {
-          throw new Error("Empty response from Gemini API");
-        }
+      if (response.candidates?.[0]?.finishReason === "MAX_TOKENS") {
+        console.warn("[GeminiService] Response truncated: MAX_TOKENS reached.");
+        throw new Error("MAX_TOKENS_EXCEEDED");
+      }
 
-        return this.parseStructuredResponse<T>(response.text);
-      });
-    } catch (error) {
-      this.handleError(error);
-    }
+      if (!response.text) {
+        throw new Error("Empty response from Gemini API");
+      }
+
+      return this.parseStructuredResponse<T>(response.text);
+    }, taskName);
   }
 
   /**
@@ -116,6 +159,7 @@ export class GeminiService {
       throw new Error("Malformed JSON response from AI service.");
     }
   }
+
   /**
    * Centralized error handler to map SDK errors to application errors.
    */
@@ -141,13 +185,13 @@ export class GeminiService {
   /**
    * Enforces a maximum execution time for the provided promise.
    */
-  private async withTimeout<T>(promise: Promise<T>): Promise<T> {
+  private async withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
     let timeoutId: NodeJS.Timeout;
 
     const timeoutPromise = new Promise<T>((_, reject) => {
       timeoutId = setTimeout(() => {
         reject(new Error("Request timed out"));
-      }, this.requestTimeoutMs);
+      }, timeoutMs);
     });
 
     try {
@@ -158,28 +202,37 @@ export class GeminiService {
   }
 
   /**
-   * Executes a given async function routing through fallback models on availability errors.
+   * Executes a given async function using the ModelSchedulerService.
    */
-  private async withRetry<T>(fn: (model: string) => Promise<T>): Promise<T> {
-    const models = env.GEMINI_MODELS;
-    const attemptedModels: string[] = [];
+  private async executeWithScheduler<T>(fn: (model: string) => Promise<T>, taskName: string): Promise<T> {
+    const maxRetries = env.GEMINI_MODELS.length * 2; // Allow enough retries across models
+    let attempt = 0;
+    const taskStart = performance.now();
+    const attemptsLog: string[] = [];
 
-    console.log(`[GeminiService] Starting request with primary model: ${models[0]}`);
-
-    for (let i = 0; i < models.length; i++) {
-      const currentModel = models[i];
-      attemptedModels.push(currentModel);
+    while (attempt < maxRetries) {
+      attempt++;
+      const acquireStart = performance.now();
+      const activeModel = await this.scheduler.acquireModel();
+      const acquireDuration = performance.now() - acquireStart;
+      
+      const startTime = performance.now();
 
       try {
-        const result = await fn(currentModel);
-        if (i > 0) {
-          console.log(`[GeminiService] Final successful fallback model: ${currentModel}`);
-        }
+        const result = await fn(activeModel);
+        const duration = performance.now() - startTime;
+        this.scheduler.reportSuccess(activeModel, duration, acquireDuration);
+        
+        attemptsLog.push(`Attempt ${attempt}\nModel: ${activeModel}\nAcquire: ${acquireDuration.toFixed(0)}ms\nGeneration: Success (${(duration/1000).toFixed(1)}s)`);
+        
+        console.log(`\n--- Task: ${taskName} ---\n${attemptsLog.join("\n\n")}\n\nTotal:\nAttempts: ${attempt}\nTotal Time: ${((performance.now() - taskStart)/1000).toFixed(1)}s\n-------------------------`);
+        
         return result;
       } catch (error: unknown) {
-        // Determine if error is transient safely without using 'any'
+        const duration = performance.now() - startTime;
+        this.scheduler.reportFailure(activeModel, error, acquireDuration);
+
         const isTimeout = error instanceof Error && error.message === "Request timed out";
-        
         const errObj = error as Record<string, unknown>;
         const status = typeof errObj?.status === "number" ? errObj.status : undefined;
         const code = typeof errObj?.code === "string" ? errObj.code : undefined;
@@ -191,29 +244,27 @@ export class GeminiService {
         const isNetworkFailure = code === "ECONNRESET" || code === "ETIMEDOUT" || name === "FetchError";
 
         const isTransient = isTimeout || isRateLimit || isServerFailure || isNetworkFailure || isNotFound;
+        
+        let resultReason = "Error";
+        if (isTimeout) resultReason = `Timeout (${(duration/1000).toFixed(1)}s)`;
+        else if (isRateLimit) resultReason = `429 Rate Limit (${(duration/1000).toFixed(1)}s)`;
+        else if (isServerFailure) resultReason = `${status} Server Error (${(duration/1000).toFixed(1)}s)`;
+        else if (isNetworkFailure) resultReason = `Network Error (${(duration/1000).toFixed(1)}s)`;
+        
+        attemptsLog.push(`Attempt ${attempt}\nModel: ${activeModel}\nAcquire: ${acquireDuration.toFixed(0)}ms\nGeneration: ${resultReason}`);
 
         if (!isTransient) {
-          throw error; // Schema validation failure, malformed JSON, invalid prompt
+          console.log(`\n--- Task: ${taskName} ---\n${attemptsLog.join("\n\n")}\n\nTotal:\nAttempts: ${attempt}\nTotal Time: ${((performance.now() - taskStart)/1000).toFixed(1)}s\n-------------------------`);
+          // If it's a fatal error (like malformed JSON or validation), rethrow immediately.
+          // The scheduler has already recorded the failure (but did not cool it down).
+          this.handleError(error);
         }
 
-        let reason = "Unknown transient error";
-        if (isRateLimit) reason = "429 Quota Exceeded / Rate Limited";
-        else if (isNotFound) reason = "404 Model Unavailable / Deprecated";
-        else if (isServerFailure) reason = `${status} Server Error`;
-        else if (isTimeout) reason = "Request Timeout";
-        else if (isNetworkFailure) reason = "Network Failure";
-
-        if (i < models.length - 1) {
-          const nextModel = models[i + 1];
-          console.log(`[GeminiService] Request failed on ${currentModel}. Reason: ${reason}`);
-          console.log(`[GeminiService] Fallback switching to next priority model: ${nextModel}`);
-        } else {
-          console.log(`[GeminiService] Request failed on ${currentModel}. Reason: ${reason}`);
-        }
+        // It's a transient error, so we continue the while loop to retry with a new model
       }
     }
-    
-    console.error(`[GeminiService] All fallback models exhausted. Models attempted: ${attemptedModels.join(", ")}`);
-    throw new InternalServerError("An error occurred while communicating with the AI service. All fallback models failed.");
+
+    console.log(`\n--- Task: ${taskName} [FAILED] ---\n${attemptsLog.join("\n\n")}\n\nTotal:\nAttempts: ${attempt}\nTotal Time: ${((performance.now() - taskStart)/1000).toFixed(1)}s\n-------------------------`);
+    throw new InternalServerError("An error occurred while communicating with the AI service. Max scheduling retries exhausted.");
   }
 }
