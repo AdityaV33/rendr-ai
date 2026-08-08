@@ -1,1 +1,17 @@
 @import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", "sans-serif";
+  --font-mono: "VT323", "monospace";
+
+  --color-app-bg: #090909;
+  --color-app-secondary: #111111;
+  --color-app-panel: #171717;
+  --color-app-border: #2A2A2A;
+  --color-app-text: #F5F5F5;
+  --color-app-muted: #A0A0A0;
+}
+
+body {
+  @apply bg-app-bg text-app-text font-sans antialiased;
+}

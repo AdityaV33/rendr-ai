@@ -29,6 +29,18 @@ importers:
 
   apps/client:
     dependencies:
+      '@fontsource/ibm-plex-mono':
+        specifier: ^5.3.0
+        version: 5.3.0
+      '@fontsource/inter':
+        specifier: ^5.3.0
+        version: 5.3.0
+      '@fontsource/space-mono':
+        specifier: ^5.3.0
+        version: 5.3.0
+      '@fontsource/vt323':
+        specifier: ^5.3.0
+        version: 5.3.0
       '@monaco-editor/react':
         specifier: ^4.7.0
         version: 4.7.0(monaco-editor@0.56.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -38,6 +50,12 @@ importers:
       axios:
         specifier: ^1.18.1
         version: 1.18.1
+      framer-motion:
+        specifier: ^13.0.0
+        version: 13.0.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      lucide-react:
+        specifier: ^1.29.0
+        version: 1.29.0(react@19.2.7)
       react:
         specifier: ^19.2.7
         version: 19.2.7
@@ -446,6 +464,18 @@ packages:
   '@eslint/plugin-kit@0.7.2':
     resolution: {integrity: sha512-+CNAzxglkrpNf/kKywqQfk74QjtceuOE7Qm+AF8miRvPF/wmmK5+OJOgVh3AVTT3RP2mH3+FOaxlE5v72owk0A==}
     engines: {node: ^20.19.0 || ^22.13.0 || >=24}
+
+  '@fontsource/ibm-plex-mono@5.3.0':
+    resolution: {integrity: sha512-eTgnZjZEGk1QtD3ZstF+Vclo2HLAni8YMy34/DxllwZvyz1lR/1RF/xTiAquOBO7MvqBx8D2Ig2WCPMVfdZu7Q==}
+
+  '@fontsource/inter@5.3.0':
+    resolution: {integrity: sha512-RofMylZmjlJEfELXeNHFWBRcSs75rGU/6bV2S2jfnvv/3rPXPGe0LgUJTklcHZ9lM4OZmAVFhcJPnACfb91A3g==}
+
+  '@fontsource/space-mono@5.3.0':
+    resolution: {integrity: sha512-FrpBMOVWn3PRdRHlrZWC55X3kZG/2BTH7SM5ZyS/bky3iKya2BturI5lk+t0RoDQL2JyHzURsVq/EisCsxpI5A==}
+
+  '@fontsource/vt323@5.3.0':
+    resolution: {integrity: sha512-3w33Rg/0+R1587HQfz4t7Q7e0GGeCqr3wmzIwqdGInUnrGEwMA5eX39GP4Z9wpTQnwfhVOhYuxuRwRUeIcicbw==}
 
   '@google/genai@2.15.0':
     resolution: {integrity: sha512-Q41TvqwBQ9NcmWdh6qxY5qrpg+0FaVHD7febQoH007pykxzco4ohScBUP4BBBy+Q8j5D8euIBSRIBDfWuNVCKA==}
@@ -1313,6 +1343,17 @@ packages:
     resolution: {integrity: sha512-buRG0fpBtRHSTCOASe6hD258tEubFoRLb4ZNA6NxMVHNw2gOcwHo9wyablzMzOA5z9xA9L1KNjk/Nt6MT9aYow==}
     engines: {node: '>= 0.6'}
 
+  framer-motion@13.0.0:
+    resolution: {integrity: sha512-nQGZXlsiigN48nzvE7AL1GLekql+etcphp8v+PQ0X04oxO20yVmV9rU9XQ25c136RdeIYoaWlKT9oAwvJza3mg==}
+    peerDependencies:
+      react: ^18.0.0 || ^19.0.0
+      react-dom: ^18.0.0 || ^19.0.0
+    peerDependenciesMeta:
+      react:
+        optional: true
+      react-dom:
+        optional: true
+
   fresh@2.0.0:
     resolution: {integrity: sha512-Rx/WycZ60HOaqLKAi6cHRKKI7zxWbJ31MhntmtwMoaTeF7XFH9hhBp8vITaMidfljRQ6eYWCKkaTK+ykVJHP2A==}
     engines: {node: '>= 0.8'}
@@ -1617,6 +1658,11 @@ packages:
   lru-cache@5.1.1:
     resolution: {integrity: sha512-KpNARQA3Iwv+jTA0utUVVbrh+Jlrr1Fv0e56GGzAFOXN7dk/FviaDW8LHmK52DlcH4WP2n6gI8vN1aesBFgo9w==}
 
+  lucide-react@1.29.0:
+    resolution: {integrity: sha512-Xs9QFG5+9sNX04MdKVT4++umA+hJ2qsJVlRlRWHQ7qZobXgMiNHSpZ5eZm8JUoGCdNyoEdXoEwa8HVr0DNjOQg==}
+    peerDependencies:
+      react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
+
   magic-string@0.30.21:
     resolution: {integrity: sha512-vd2F4YUyEXKGcLHoq+TEyCjxueSeHnFxyyjNp80yg0XV4vUhnDer/lvvlqM/arB5bXQN5K2/3oinyCRyx8T2CQ==}
 
@@ -1700,6 +1746,12 @@ packages:
   mongoose@9.7.4:
     resolution: {integrity: sha512-nuSYGUWWzNd4EAbGYxE469wPTL+kmxb5+91YvCvMkJ08rvNRht/usZUU3LuFuk7rDutF2QWBZHPHuzM8TxXApA==}
     engines: {node: '>=20.19.0'}
+
+  motion-dom@13.0.0:
+    resolution: {integrity: sha512-Xk+SJas70uMAUIApg+m3lZDShxI3LBFHq7mFGbBKoRXc2PVPDyAKmzN64Bbzt4CZdP/CItTiJxWtn4TA0v53Ng==}
+
+  motion-utils@13.0.0:
+    resolution: {integrity: sha512-7DnN7TmbLcYXcG4RVadXIihWlyuM9afoUww8Y5Agg431kGKiuL2/OMyP4mJ5wLz+pvN3t5ySClLOaVXJ+wekRQ==}
 
   mpath@0.9.0:
     resolution: {integrity: sha512-ikJRQTk8hw5DEoFVxHG1Gn9T/xcjtdnOKIU1JTmGjZZlg9LST2mBLmcX3/ICIbgJydT2GOc15RnNy5mHmzfSew==}
@@ -2468,6 +2520,14 @@ snapshots:
       '@eslint/core': 1.2.1
       levn: 0.4.1
 
+  '@fontsource/ibm-plex-mono@5.3.0': {}
+
+  '@fontsource/inter@5.3.0': {}
+
+  '@fontsource/space-mono@5.3.0': {}
+
+  '@fontsource/vt323@5.3.0': {}
+
   '@google/genai@2.15.0':
     dependencies:
       google-auth-library: 10.9.1
@@ -2773,10 +2833,10 @@ snapshots:
     dependencies:
       '@types/webidl-conversions': 7.0.3
 
-  '@typescript-eslint/eslint-plugin@8.64.0(@typescript-eslint/parser@8.64.0(eslint@9.39.5(jiti@2.7.0))(typescript@6.0.3))(eslint@10.7.0(jiti@2.7.0))(typescript@6.0.3)':
+  '@typescript-eslint/eslint-plugin@8.64.0(@typescript-eslint/parser@8.64.0(eslint@10.7.0(jiti@2.7.0))(typescript@6.0.3))(eslint@10.7.0(jiti@2.7.0))(typescript@6.0.3)':
     dependencies:
       '@eslint-community/regexpp': 4.12.2
-      '@typescript-eslint/parser': 8.64.0(eslint@9.39.5(jiti@2.7.0))(typescript@6.0.3)
+      '@typescript-eslint/parser': 8.64.0(eslint@10.7.0(jiti@2.7.0))(typescript@6.0.3)
       '@typescript-eslint/scope-manager': 8.64.0
       '@typescript-eslint/type-utils': 8.64.0(eslint@10.7.0(jiti@2.7.0))(typescript@6.0.3)
       '@typescript-eslint/utils': 8.64.0(eslint@10.7.0(jiti@2.7.0))(typescript@6.0.3)
@@ -3425,6 +3485,15 @@ snapshots:
 
   forwarded@0.2.0: {}
 
+  framer-motion@13.0.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7):
+    dependencies:
+      motion-dom: 13.0.0
+      motion-utils: 13.0.0
+      tslib: 2.8.1
+    optionalDependencies:
+      react: 19.2.7
+      react-dom: 19.2.7(react@19.2.7)
+
   fresh@2.0.0: {}
 
   fsevents@2.3.3:
@@ -3698,6 +3767,10 @@ snapshots:
     dependencies:
       yallist: 3.1.1
 
+  lucide-react@1.29.0(react@19.2.7):
+    dependencies:
+      react: 19.2.7
+
   magic-string@0.30.21:
     dependencies:
       '@jridgewell/sourcemap-codec': 1.5.5
@@ -3765,6 +3838,12 @@ snapshots:
       - mongodb-client-encryption
       - snappy
       - socks
+
+  motion-dom@13.0.0:
+    dependencies:
+      motion-utils: 13.0.0
+
+  motion-utils@13.0.0: {}
 
   mpath@0.9.0: {}
 
@@ -4097,7 +4176,7 @@ snapshots:
 
   typescript-eslint@8.64.0(eslint@10.7.0(jiti@2.7.0))(typescript@6.0.3):
     dependencies:
-      '@typescript-eslint/eslint-plugin': 8.64.0(@typescript-eslint/parser@8.64.0(eslint@9.39.5(jiti@2.7.0))(typescript@6.0.3))(eslint@10.7.0(jiti@2.7.0))(typescript@6.0.3)
+      '@typescript-eslint/eslint-plugin': 8.64.0(@typescript-eslint/parser@8.64.0(eslint@10.7.0(jiti@2.7.0))(typescript@6.0.3))(eslint@10.7.0(jiti@2.7.0))(typescript@6.0.3)
       '@typescript-eslint/parser': 8.64.0(eslint@10.7.0(jiti@2.7.0))(typescript@6.0.3)
       '@typescript-eslint/typescript-estree': 8.64.0(typescript@6.0.3)
       '@typescript-eslint/utils': 8.64.0(eslint@10.7.0(jiti@2.7.0))(typescript@6.0.3)
