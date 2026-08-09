@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "@/lib/toast";
 import { useDashboardStore } from "../store/dashboard.store";
 import type { Project } from "../types/dashboard";
 
@@ -31,6 +32,20 @@ const TrashIcon = ({ size = 16, className = "" }) => (
   </svg>
 );
 
+const getStageColor = (stage?: string) => {
+  switch (stage) {
+    case "Planning...": return "#ff007f"; // Hot Pink
+    case "Designing Architecture...": return "#9d4edd"; // Deep Purple
+    case "Generating Files...": return "#00f0ff"; // Neon Cyan
+    case "Installing Dependencies...": return "#ff9e00"; // Neon Orange
+    case "Building Application...": return "#3a86ff"; // Electric Blue
+    case "Starting Preview...": return "#ffbe0b"; // Neon Yellow
+    case "Verifying Preview...": return "#e2e8f0"; // Bright Silver
+    case "Repairing...": return "#f43f5e"; // Rose
+    default: return "#60a5fa"; // Default Blue
+  }
+};
+
 const ProjectCard = ({ project }: ProjectCardProps) => {
   const navigate = useNavigate();
   const deleteProject = useDashboardStore((state) => state.deleteProject);
@@ -51,6 +66,8 @@ const ProjectCard = ({ project }: ProjectCardProps) => {
       onClick={() => {
         if (!['generating', 'building', 'planning'].includes(project.status)) {
           navigate(`/builder/${project.id}`);
+        } else {
+          toast.warning("Generating", "Please wait until the app is generated.");
         }
       }}
       title={['generating', 'building', 'planning'].includes(project.status) ? "Project is still being generated." : undefined}
@@ -137,8 +154,8 @@ const ProjectCard = ({ project }: ProjectCardProps) => {
                 transition={{ duration: 0.4, ease: "easeOut" }}
                 className="flex items-center space-x-2 border border-[#3b82f6]/30 px-3 py-1.5 bg-[#3b82f6]/5"
               >
-                <div className="w-2 h-2 rounded-full bg-[#60a5fa] animate-pulse" />
-                <span className="font-mono text-sm text-[#60a5fa]">{project.pipelineStage || 'Planning...'}</span>
+                <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: getStageColor(project.pipelineStage) }} />
+                <span className="font-mono text-sm" style={{ color: getStageColor(project.pipelineStage) }}>{project.pipelineStage || 'Planning...'}</span>
               </motion.div>
             )}
 
@@ -152,8 +169,8 @@ const ProjectCard = ({ project }: ProjectCardProps) => {
                 className="flex flex-col space-y-2 flex-1 mr-4"
               >
                 <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 rounded-full bg-[#60a5fa] animate-pulse" />
-                  <span className="font-mono text-sm text-[#60a5fa]">
+                  <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: getStageColor(project.pipelineStage) }} />
+                  <span className="font-mono text-sm" style={{ color: getStageColor(project.pipelineStage) }}>
                     {project.pipelineStage || 'Generating...'}
                   </span>
                 </div>

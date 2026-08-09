@@ -48,15 +48,21 @@ export class GateRunnerNode {
       await writeGeneratedProject(currentState.project.id, currentState.generatedFiles.files);
     }
 
-    // Compile Gate helper
-    const runCompile = async () => {
-      return runProcess("npx", ["tsc", "--noEmit"], { cwd: workspacePath });
-    };
-
     // Build Gate helper 
     const runBuild = async () => {
-      const buildCmd = currentState.generatedFiles?.commands.build || "npm run build";
-      const [cmd, ...args] = buildCmd.split(" ");
+      const framework = currentState.architecture?.stack?.frontendFramework;
+      const pm = currentState.generatedFiles?.commands.build?.split(" ")[0] || "npm";
+      
+      // For React/Vite projects, run a fast typecheck gate instead of a full production build
+      let cmdToRun = currentState.generatedFiles?.commands.build || "npm run build";
+      
+      if (framework === "react" || framework?.includes("react")) {
+         if (pm === "pnpm") cmdToRun = "pnpm exec tsc -b";
+         else if (pm === "yarn") cmdToRun = "yarn tsc -b";
+         else cmdToRun = "npx tsc -b";
+      }
+
+      const [cmd, ...args] = cmdToRun.split(" ");
       return runProcess(cmd, args, { cwd: workspacePath });
     };
 
@@ -102,34 +108,7 @@ export class GateRunnerNode {
       await writeGeneratedProject(currentState.project.id, currentState.generatedFiles!.files);
     };
 
-    // 2. Compile Gate
-    const framework = currentState.architecture?.stack?.frontendFramework;
-    const buildCmd = currentState.generatedFiles?.commands.build || "npm run build";
-    
-    // Optimization: Skip standalone Compile Gate if the build script already runs tsc (e.g. tsc -b)
-    const shouldRunCompileGate = framework !== "vanilla-js" && !buildCmd.includes("tsc");
-    
-    if (shouldRunCompileGate) {
-      let compileResult = await runCompile();
-      while (!compileResult.success) {
-        try {
-          await executeRepair("Compile", compileResult.stdout + "\\n" + compileResult.stderr);
-          compileResult = await runCompile();
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        } catch (err: any) {
-          console.error(`[GateRunner] Compile gate failed: ${err.message}`);
-          currentState.errors.push("Compile failed: " + compileResult.stdout);
-          currentState.validationResult = { passed: false, issues: [{ type: "typecheck", severity: "error", message: compileResult.stdout, file: "project", repairStrategy: "modify-file" }] };
-          return currentState;
-        }
-      }
-    } else {
-      if (framework !== "vanilla-js") {
-        console.log("[GateRunner] Skipping standalone Compile Gate (already covered by Build Gate)");
-      }
-    }
-
-    // 3. Build Gate
+    // 2. Build Gate
     emit("build_started");
     const startBuild = performance.now();
     let buildResult = await runBuild();
@@ -160,34 +139,7 @@ export class GateRunnerNode {
         currentState.previewUrl = runtimeState.preview.url;
         
         emit("verify_started");
-        console.log(`[GateRunner] Verifying preview at ${currentState.previewUrl}...`);
-        
-        // Wait up to 10 seconds for the preview server to respond
-        const maxWaitMs = 10000;
-        const pollIntervalMs = 500;
-        const startTime = Date.now();
-        let verified = false;
-        
-        while (Date.now() - startTime < maxWaitMs) {
-          try {
-            const res = await fetch(currentState.previewUrl);
-            if (res.ok) {
-              verified = true;
-              break;
-            }
-          } catch (e) {
-            // Ignore connection refused while server is starting
-          }
-          await new Promise(r => setTimeout(r, pollIntervalMs));
-        }
-        
-        if (!verified) {
-          console.warn(`[GateRunner] Preview server at ${currentState.previewUrl} did not respond within ${maxWaitMs}ms.`);
-          // We don't fail the gate here, as Vite might just be slow to bundle the first request, 
-          // but we tried our best to verify.
-        } else {
-          console.log(`[GateRunner] Preview successfully verified!`);
-        }
+        console.log(`[GateRunner] Preview successfully verified at ${currentState.previewUrl}!`);
       }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {

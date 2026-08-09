@@ -95,6 +95,16 @@ export async function generateProject(owner: string, projectId: string) {
   let runtimeTime = 0;
   const startOverall = performance.now();
 
+  let saveQueue = Promise.resolve<any>(null);
+  const safeSave = async () => {
+    const currentSave = saveQueue
+      .catch(() => {}) // Prevent previous failures from poisoning this execution
+      .then(() => project.save());
+    
+    saveQueue = currentSave;
+    return currentSave;
+  };
+
   console.log("\n===================================");
   console.log("Parallel Execution Started");
   console.log("===================================");
@@ -149,7 +159,7 @@ export async function generateProject(owner: string, projectId: string) {
               project.pipelineTimestamps[timestampKey] = new Date();
               project.markModified('pipelineTimestamps');
             }
-            await project.save();
+            await safeSave();
           }
         })().catch(err => console.error("[Pipeline DB Error]", err));
         
@@ -186,7 +196,7 @@ export async function generateProject(owner: string, projectId: string) {
     project.pipelineTimestamps["completedAt"] = new Date();
     project.markModified('pipelineTimestamps');
 
-    await project.save();
+    await safeSave();
     
     const syncTime = performance.now() - startSync;
 
@@ -236,7 +246,7 @@ export async function generateProject(owner: string, projectId: string) {
   } catch (error) {
     project.status = "failed";
     project.pipelineStage = "Failed";
-    await project.save();
+    await safeSave();
     
     // AI Failure / Runtime Failure Cleanup
     try {

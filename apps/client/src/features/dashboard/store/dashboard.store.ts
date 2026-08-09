@@ -90,8 +90,8 @@ export const useDashboardStore =
           ),
         });
         
-        // Wait 3 seconds to simulate creation time as requested by user
-        await new Promise(r => setTimeout(r, 3000));
+        // Wait 2.35 seconds to simulate creation time as requested by user
+        await new Promise(r => setTimeout(r, 2350));
         
         set({
           loading: false,
