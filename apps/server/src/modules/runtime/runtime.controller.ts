@@ -129,12 +129,13 @@ export async function updateWorkspaceFile(
     );
     if (fileIndex >= 0) {
       project.generatedProject.files[fileIndex].content = content;
-      project.markModified("generatedProject");
-      await project.save();
-      console.log(`[Runtime] Workspace file updated and persisted: ${normalizedFilePath}`);
     } else {
-      console.log(`[Runtime] Workspace file updated: ${normalizedFilePath} (Template file)`);
+      project.generatedProject.files.push({ path: normalizedFilePath, content });
+      console.log(`[Runtime] Workspace file added/updated from template: ${normalizedFilePath}`);
     }
+    project.markModified("generatedProject");
+    await project.save();
+    console.log(`[Runtime] Workspace file updated and persisted: ${normalizedFilePath}`);
   }
 
   return res.status(200).json({

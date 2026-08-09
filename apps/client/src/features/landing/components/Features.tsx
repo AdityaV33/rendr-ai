@@ -3,7 +3,7 @@ import { FeatureCard, type Feature } from "./FeatureCard";
 import { 
   PixelAppWindow, 
   PixelCode, 
-  PixelTerminal, 
+  PixelTerminal,
   PixelEye, 
   PixelPackage 
 } from "./PixelIcons";

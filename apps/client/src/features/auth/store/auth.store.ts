@@ -120,7 +120,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   logout: async () => {
     try {
       await authService.logout();
-    } catch (e) {
+    } catch {
       // ignore
     }
 

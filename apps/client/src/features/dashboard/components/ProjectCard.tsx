@@ -32,6 +32,14 @@ const TrashIcon = ({ size = 16, className = "" }) => (
   </svg>
 );
 
+const DownloadIcon = ({ size = 16, className = "" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+    <polyline points="7 10 12 15 17 10"></polyline>
+    <line x1="12" y1="15" x2="12" y2="3"></line>
+  </svg>
+);
+
 const getStageColor = (stage?: string) => {
   switch (stage) {
     case "Planning...": return "#ff007f"; // Hot Pink
@@ -49,7 +57,9 @@ const getStageColor = (stage?: string) => {
 const ProjectCard = ({ project }: ProjectCardProps) => {
   const navigate = useNavigate();
   const deleteProject = useDashboardStore((state) => state.deleteProject);
+  const exportProject = useDashboardStore((state) => state.exportProject);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -58,6 +68,20 @@ const ProjectCard = ({ project }: ProjectCardProps) => {
       await deleteProject(project.id);
     } catch {
       setIsDeleting(false);
+    }
+  };
+
+  const handleExport = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsExporting(true);
+    try {
+      await exportProject(project.id, project.name);
+      toast.success("Success", "Project exported successfully.");
+    } catch {
+      toast.error("Export Failed", "Unable to export project. Please try again.");
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -85,9 +109,30 @@ const ProjectCard = ({ project }: ProjectCardProps) => {
         </span>
       </div>
 
-      <div className="p-5 flex flex-col flex-1">
+      <div className="p-5 flex flex-col flex-1 relative">
+        {/* Export Button - Top Right */}
+        {project.status === 'ready' && (
+          <div className="absolute top-5 right-5">
+            <button
+              onClick={handleExport}
+              disabled={isExporting}
+              className="flex items-center justify-center border border-[#555] p-2 text-[#a0a0a0] hover:bg-[#1a1a1a] hover:text-[#f5f5f5] hover:border-[#f5f5f5] transition-colors disabled:opacity-50 disabled:cursor-not-allowed z-10"
+              title="Export Project ZIP"
+            >
+              {isExporting ? (
+                <svg className="animate-spin h-5 w-5 text-[#f5f5f5]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              ) : (
+                <DownloadIcon size={20} />
+              )}
+            </button>
+          </div>
+        )}
+
         {/* Title & Description */}
-        <div className="flex-1">
+        <div className="flex-1 pr-10">
           <h2 className="font-mono text-2xl font-bold tracking-tight text-[#f5f5f5] mb-4">
             {project.name}
           </h2>
@@ -192,22 +237,23 @@ const ProjectCard = ({ project }: ProjectCardProps) => {
             )}
           </AnimatePresence>
 
-          {/* Delete Button */}
-          <button
-            onClick={handleDelete}
-            disabled={isDeleting}
-            className="flex items-center justify-center border border-[#555] p-2 text-[#a0a0a0] hover:bg-[#1a1a1a] hover:text-[#f5f5f5] hover:border-[#f5f5f5] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Delete Project"
-          >
-            {isDeleting ? (
-               <svg className="animate-spin h-5 w-5 text-[#f5f5f5]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-               </svg>
-            ) : (
-               <TrashIcon size={20} />
-            )}
-          </button>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="flex items-center justify-center border border-[#555] p-2 text-[#a0a0a0] hover:bg-[#1a1a1a] hover:text-[#f5f5f5] hover:border-[#f5f5f5] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Delete Project"
+            >
+              {isDeleting ? (
+                <svg className="animate-spin h-5 w-5 text-[#f5f5f5]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              ) : (
+                <TrashIcon size={20} />
+              )}
+            </button>
+          </div>
         </div>
       </div>
     </div>

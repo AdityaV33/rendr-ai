@@ -8,6 +8,7 @@ export type ProjectStatus =
   | "planning"
   | "generating"
   | "building"
+  | "repairing"
   | "ready"
   | "failed";
 

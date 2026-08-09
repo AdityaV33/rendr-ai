@@ -19,6 +19,10 @@ interface DashboardState {
   deleteProject: (
     projectId: string,
   ) => Promise<void>;
+  exportProject: (
+    projectId: string,
+    projectName: string,
+  ) => Promise<void>;
 
   clearError: () => void;
 }
@@ -54,8 +58,6 @@ export const useDashboardStore =
               ? error.message
               : "Failed to fetch projects.",
         });
-
-        throw error;
       }
     },
 
@@ -66,7 +68,7 @@ export const useDashboardStore =
       });
 
       try {
-        let project =
+        const project =
           await dashboardService.createProject(
             data,
           );
@@ -110,25 +112,49 @@ export const useDashboardStore =
     },
 
     deleteProject: async (projectId) => {
-      try {
-        await dashboardService.deleteProject(
-          projectId,
-        );
+      const currentProjects = get().projects;
+      const projectToDelete = currentProjects.find((p) => p.id === projectId);
+      
+      // Optimistic Update
+      set({
+        projects: currentProjects.filter((p) => p.id !== projectId),
+      });
 
+      try {
+        await dashboardService.deleteProject(projectId);
+      } catch (error) {
+        // Rollback
+        if (projectToDelete) {
+          set({ projects: [...get().projects, projectToDelete] });
+        }
+        
         set({
-          projects: get().projects.filter(
-            (project) =>
-              project.id !== projectId,
-          ),
+          error: error instanceof Error ? error.message : "Failed to delete project.",
         });
+
+        throw error;
+      }
+    },
+
+    exportProject: async (projectId: string, projectName: string) => {
+      try {
+        const blob = await dashboardService.exportProject(projectId);
+        const url = window.URL.createObjectURL(new Blob([blob]));
+        const link = document.createElement("a");
+        link.href = url;
+        const safeFilename = projectName.replace(/[^a-z0-9]/gi, "_").toLowerCase() || "project";
+        link.setAttribute("download", `${safeFilename}-export.zip`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
       } catch (error) {
         set({
           error:
             error instanceof Error
               ? error.message
-              : "Failed to delete project.",
+              : "Failed to export project.",
         });
-
         throw error;
       }
     },

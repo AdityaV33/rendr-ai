@@ -1,5 +1,5 @@
 import React from "react";
-import { PixelTerminal } from "./PixelIcons";
+import { GithubIcon } from "./PixelIcons";
 
 export const Footer: React.FC = () => {
   return (
@@ -22,10 +22,14 @@ export const Footer: React.FC = () => {
         </div>
         
         {/* Right: Links */}
-        <div className="flex items-center space-x-4 text-gray-500 hover:text-[#f5f5f5] transition-colors">
-          <a href="https://github.com/AdityaV33" target="_blank" rel="noopener noreferrer" className="cursor-pointer">
-            Designed & Developed by Aditya Verma
+        <div className="flex items-center space-x-6 text-gray-500">
+          <a href="https://github.com/AdityaV33" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:text-[#f5f5f5] transition-colors">
+            <GithubIcon size={14} className="opacity-75" />
+            <span>AdityaV33</span>
           </a>
+          <span className="cursor-pointer hover:text-[#f5f5f5] transition-colors">
+            Designed & Developed by Aditya Verma
+          </span>
         </div>
 
       </div>

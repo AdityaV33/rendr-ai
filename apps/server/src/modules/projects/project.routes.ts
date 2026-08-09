@@ -32,6 +32,12 @@ router.get(
   asyncHandler(projectController.getProjectById),
 );
 
+router.get(
+  "/:projectId/export",
+  requireAuth,
+  asyncHandler(projectController.exportProject),
+);
+
 router.patch(
   "/:projectId",
   requireAuth,

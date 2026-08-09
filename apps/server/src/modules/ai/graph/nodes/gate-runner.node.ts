@@ -56,7 +56,7 @@ export class GateRunnerNode {
       // For React/Vite projects, run a fast typecheck gate instead of a full production build
       let cmdToRun = currentState.generatedFiles?.commands.build || "npm run build";
       
-      if (framework === "react" || framework?.includes("react")) {
+      if (framework?.includes("react")) {
          if (pm === "pnpm") cmdToRun = "pnpm exec tsc -b";
          else if (pm === "yarn") cmdToRun = "yarn tsc -b";
          else cmdToRun = "npx tsc -b";
@@ -110,7 +110,6 @@ export class GateRunnerNode {
 
     // 2. Build Gate
     emit("build_started");
-    const startBuild = performance.now();
     let buildResult = await runBuild();
     while (!buildResult.success) {
       try {

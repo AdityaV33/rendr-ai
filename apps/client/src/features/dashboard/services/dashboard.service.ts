@@ -54,6 +54,13 @@ class DashboardService {
   ): Promise<void> {
     await api.delete(`/projects/${projectId}`);
   }
+
+  async exportProject(projectId: string): Promise<Blob> {
+    const response = await api.get(`/projects/${projectId}/export`, {
+      responseType: 'blob',
+    });
+    return response.data;
+  }
 }
 
 export const dashboardService =

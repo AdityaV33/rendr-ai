@@ -1,12 +1,11 @@
 import React from "react";
 import { motion } from "framer-motion";
-import type { LucideIcon } from "lucide-react";
 import { PixelCircle, PixelX } from "./PixelIcons";
 
 export interface Feature {
   title: string;
   description: string;
-  icon: LucideIcon;
+  icon: React.ComponentType<{ size?: number; className?: string; strokeWidth?: number }>;
 }
 
 interface FeatureCardProps {

@@ -5,6 +5,7 @@ import { aiService } from "../ai/index.js";
 import { NotFoundError } from "../lib/http-error.js";
 import * as workspaceService from "../runtime/workspace.service.js";
 import * as runtimeManagerService from "../runtime/runtime-manager.service.js";
+import * as workspaceFileService from "../runtime/workspace-file.service.js";
 
 
 export async function createProject(
@@ -66,17 +67,23 @@ export async function deleteProject(
   owner: string,
   projectId: string
 ) {
+  console.log(`[deleteProject] Attempting to delete project ${projectId} for owner ${owner}`);
   const project = await ProjectModel.findOneAndDelete({
     _id: projectId,
     owner,
   });
+  console.log(`[deleteProject] findOneAndDelete result:`, !!project);
 
   if (project) {
     try {
       runtimeManagerService.stopRuntime(projectId);
-      await workspaceService.deleteWorkspace(projectId);
+      
+      // Fire and forget workspace deletion to unblock the API response
+      workspaceService.deleteWorkspace(projectId).catch(err => {
+        console.error(`[Background Cleanup] Failed to delete workspace for project ${projectId}`, err);
+      });
     } catch (err) {
-      console.error(`Failed to clean up resources for project ${projectId}`, err);
+      console.error(`Failed to stop runtime for project ${projectId}`, err);
     }
   }
 
@@ -95,7 +102,7 @@ export async function generateProject(owner: string, projectId: string) {
   let runtimeTime = 0;
   const startOverall = performance.now();
 
-  let saveQueue = Promise.resolve<any>(null);
+  let saveQueue = Promise.resolve<unknown>(null);
   const safeSave = async () => {
     const currentSave = saveQueue
       .catch(() => {}) // Prevent previous failures from poisoning this execution
@@ -115,7 +122,7 @@ export async function generateProject(owner: string, projectId: string) {
       projectId: projectId,
       onEvent: (event) => {
         // Fire-and-forget DB update for live status tracking
-        const updatePromise = (async () => {
+        void (async () => {
           let stage: string | null = null;
           let timestampKey: string | null = null;
 
@@ -183,6 +190,15 @@ export async function generateProject(owner: string, projectId: string) {
     console.log("\n[Pipeline] Synchronizing Runtime Workspace");
 
     const startSync = performance.now();
+
+    try {
+      const allFiles = await workspaceFileService.collectAllFiles(projectId);
+      if (allFiles.length > 0) {
+        generatedProject.files = allFiles;
+      }
+    } catch (err) {
+      console.error("[Pipeline] Failed to collect final workspace files", err);
+    }
 
     project.aiPlan = projectPlan;
     project.architecturePlan = architecturePlan;
