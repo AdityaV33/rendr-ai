@@ -1,6 +1,7 @@
 import { useState } from "react";
 import BuilderAssistant from "./BuilderAssistant";
 import BuilderPreview from "./BuilderPreview";
+import { useBuilderStore } from "@/features/builder/store/builder.store";
 
 interface BuilderSidebarProps {
   onGenerate: () => void;
@@ -9,6 +10,15 @@ interface BuilderSidebarProps {
 const BuilderSidebar = ({ onGenerate }: BuilderSidebarProps) => {
   const [activeTab, setActiveTab] = useState<"assistant" | "preview">("assistant");
   const [hasOpenedPreview, setHasOpenedPreview] = useState(false);
+  
+  const currentProject = useBuilderStore((state) => state.currentProject);
+  const isApplying = useBuilderStore((state) => state.isApplying);
+  const isUndoing = useBuilderStore((state) => state.isUndoing);
+  const isActiveRefinement = Boolean(
+    currentProject && 
+    ["refining", "building", "repairing"].includes(currentProject.status) && 
+    currentProject.historyCount !== undefined
+  );
 
   const handleTabChange = (tab: "assistant" | "preview") => {
     setActiveTab(tab);
@@ -18,24 +28,30 @@ const BuilderSidebar = ({ onGenerate }: BuilderSidebarProps) => {
   };
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="flex border-b border-neutral-800">
+    <div className="flex h-full flex-col bg-[#0a0a0a]">
+      <div className="relative flex border-b border-dotted border-[#444] pt-4 px-2">
+        {/* Top left decor */}
+        <div className="absolute top-1 left-2 text-[8px] text-[#555] font-mono leading-none">. .</div>
+        {/* Top right decor */}
+        <div className="absolute top-1 right-2 text-[8px] text-[#555] font-mono leading-none">. .</div>
+
         <button
           onClick={() => handleTabChange("assistant")}
-          className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+          className={`flex-1 px-4 py-2 text-[13px] font-mono transition-colors border-b ${
             activeTab === "assistant"
-              ? "border-b-2 border-blue-500 text-white"
-              : "text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200"
+              ? "border-[#f5f5f5] text-[#f5f5f5] font-bold"
+              : "border-transparent text-[#a0a0a0] hover:text-[#f5f5f5]"
           }`}
         >
-          AI Assistant
+          AI Refinement
         </button>
         <button
           onClick={() => handleTabChange("preview")}
-          className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+          disabled={isActiveRefinement || isApplying || isUndoing}
+          className={`flex-1 px-4 py-2 text-[13px] font-mono transition-colors border-b ${
             activeTab === "preview"
-              ? "border-b-2 border-blue-500 text-white"
-              : "text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200"
+              ? "border-[#f5f5f5] text-[#f5f5f5] font-bold"
+              : "border-transparent text-[#a0a0a0] hover:text-[#f5f5f5] disabled:opacity-50 disabled:cursor-not-allowed"
           }`}
         >
           Preview
@@ -48,7 +64,7 @@ const BuilderSidebar = ({ onGenerate }: BuilderSidebarProps) => {
 
       {hasOpenedPreview && (
         <div className={`flex-1 overflow-hidden ${activeTab === "preview" ? "block" : "hidden"}`}>
-          <BuilderPreview onStartRuntime={onGenerate} />
+          <BuilderPreview />
         </div>
       )}
     </div>

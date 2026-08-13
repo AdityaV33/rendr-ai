@@ -1,7 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 import { env } from "../../../config/env.js";
 import { InternalServerError } from "../../lib/http-error.js";
-
+import { pipelineRunContext } from "../utils/run-context.js";
 import { ModelSchedulerService } from "../scheduler/model-scheduler.service.js";
 
 export class GeminiService {
@@ -107,7 +107,7 @@ export class GeminiService {
           contents: prompt,
           config: {
             ...this.generationConfig,
-            ...config,
+            temperature: config?.temperature,
             systemInstruction,
             responseMimeType: "application/json",
             responseSchema,
@@ -204,7 +204,10 @@ export class GeminiService {
   /**
    * Executes a given async function using the ModelSchedulerService.
    */
-  private async executeWithScheduler<T>(fn: (model: string) => Promise<T>, taskName: string): Promise<T> {
+  private async executeWithScheduler<T>(
+    fn: (model: string) => Promise<T>, 
+    taskName: string
+  ): Promise<T> {
     const maxRetries = env.GEMINI_MODELS.length * 2; // Allow enough retries across models
     let attempt = 0;
     const taskStart = performance.now();
@@ -238,7 +241,7 @@ export class GeminiService {
         const code = typeof errObj?.code === "string" ? errObj.code : undefined;
         const name = error instanceof Error ? error.name : typeof errObj?.name === "string" ? errObj.name : undefined;
 
-        const isRateLimit = status === 429;
+        const isRateLimit = status === 429 || (error instanceof Error && (error.message.includes("429") || error.message.includes("RESOURCE_EXHAUSTED")));
         const isNotFound = status === 404;
         const isServerFailure = status !== undefined && status >= 500 && status < 600;
         const isNetworkFailure = code === "ECONNRESET" || code === "ETIMEDOUT" || name === "FetchError";
@@ -247,7 +250,14 @@ export class GeminiService {
         
         let resultReason = "Error";
         if (isTimeout) resultReason = `Timeout (${(duration/1000).toFixed(1)}s)`;
-        else if (isRateLimit) resultReason = `429 Rate Limit (${(duration/1000).toFixed(1)}s)`;
+        else if (isRateLimit) {
+          resultReason = `429 Rate Limit (${(duration/1000).toFixed(1)}s)`;
+          const context = pipelineRunContext.getStore();
+          if (context && !context.blacklistedModels.has(activeModel)) {
+            context.blacklistedModels.add(activeModel);
+            console.warn(`[Scheduler] Blacklisting ${activeModel} for current pipeline run (429 Rate Limit)`);
+          }
+        }
         else if (isServerFailure) resultReason = `${status} Server Error (${(duration/1000).toFixed(1)}s)`;
         else if (isNetworkFailure) resultReason = `Network Error (${(duration/1000).toFixed(1)}s)`;
         

@@ -9,6 +9,7 @@ export const PixelCircle = ({ className = "", size = 10 }) => (
   </svg>
 );
 
+
 export const PixelMinus = ({ className = "", size = 10 }) => (
   <svg width={size} height={size} viewBox="0 0 10 10" fill="currentColor" shapeRendering="crispEdges" className={className}>
     <rect x="0" y="4" width="10" height="2" />
@@ -138,5 +139,56 @@ export const PixelClose = ({ className = "", size = 12 }) => (
     <rect x="6" y="6" width="2" height="2" />
     <rect x="0" y="8" width="2" height="2" />
     <rect x="8" y="8" width="2" height="2" />
+  </svg>
+);
+
+// File Explorer Icons
+export const FileIconFolder = ({ className = "", size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className={className}>
+    <path d="M4 6h6l2 2h8v10H4V6z" />
+  </svg>
+);
+
+export const FileIconDefault = ({ className = "", size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className={className}>
+    <path d="M6 2v20h12V8l-6-6H6z M12 2v6h6" />
+  </svg>
+);
+
+export const FileIconJS = ({ className = "", size = 16, text = "JS" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className={className}>
+    <rect x="3" y="3" width="18" height="18" rx="2" />
+    <text x="12" y="16" fontSize="10" fontFamily="monospace" fontWeight="bold" fill="currentColor" stroke="none" textAnchor="middle">{text}</text>
+  </svg>
+);
+
+export const FileIconTS = ({ className = "", size = 16 }) => <FileIconJS className={className} size={size} text="TS" />;
+export const FileIconTSX = ({ className = "", size = 16 }) => <FileIconJS className={className} size={size} text="TSX" />;
+
+export const FileIconJSON = ({ className = "", size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className={className}>
+    <rect x="3" y="3" width="18" height="18" rx="2" />
+    <text x="12" y="15" fontSize="11" fontFamily="monospace" fill="currentColor" stroke="none" textAnchor="middle">{'{}'}</text>
+  </svg>
+);
+
+export const FileIconHTML = ({ className = "", size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className={className}>
+    <rect x="3" y="3" width="18" height="18" rx="2" />
+    <text x="12" y="16" fontSize="11" fontFamily="monospace" fill="currentColor" stroke="none" textAnchor="middle">{'<>'}</text>
+  </svg>
+);
+
+export const FileIconMD = ({ className = "", size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className={className}>
+    <rect x="3" y="3" width="18" height="18" rx="2" />
+    <text x="12" y="16" fontSize="10" fontFamily="monospace" fill="currentColor" stroke="none" textAnchor="middle">M↓</text>
+  </svg>
+);
+
+export const FileIconCSS = ({ className = "", size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className={className}>
+    <rect x="3" y="3" width="18" height="18" rx="2" />
+    <text x="12" y="16" fontSize="12" fontFamily="monospace" fill="currentColor" stroke="none" textAnchor="middle">#</text>
   </svg>
 );

@@ -114,18 +114,14 @@ export const useWorkspaceStore =
               loadingWorkspace: false,
             });
           } catch (error) {
-            let message =
-              "Failed to load workspace.";
+            if (axios.isAxiosError(error) && error.response?.status === 401) {
+              throw error; // Let global interceptor handle it
+            }
 
-            if (
-              axios.isAxiosError(
-                error,
-              )
-            ) {
-              message =
-                error.response?.data
-                  ?.message ??
-                message;
+            let message = "Failed to load workspace.";
+
+            if (axios.isAxiosError(error)) {
+              message = error.response?.data?.message ?? message;
             }
 
             set({
@@ -191,6 +187,10 @@ export const useWorkspaceStore =
             openingFile: false,
           }));
         } catch (error) {
+          if (axios.isAxiosError(error) && error.response?.status === 401) {
+            throw error;
+          }
+
           let message =
             "Failed to open file.";
 
@@ -290,6 +290,10 @@ export const useWorkspaceStore =
             set({ saveSuccess: false });
           }, 2000);
         } catch (error) {
+          if (axios.isAxiosError(error) && error.response?.status === 401) {
+            throw error;
+          }
+
           let message =
             "Failed to save file.";
 

@@ -100,12 +100,15 @@ export class GateRunnerNode {
 
       emit("repair_started");
       const startRepair = performance.now();
-      await this.repairEngine.executeGateRepair(currentState, gate, errorOutput, diagnostics);
+      const repairedFiles = await this.repairEngine.executeGateRepair(currentState, gate, errorOutput, diagnostics);
       const repairDuration = performance.now() - startRepair;
       totalRepairTimeMs += repairDuration;
       emit("repair_completed", repairDuration);
       
-      await writeGeneratedProject(currentState.project.id, currentState.generatedFiles!.files);
+      const { updateWorkspaceFile } = await import("../../../runtime/workspace-file.service.js");
+      for (const file of repairedFiles) {
+        await updateWorkspaceFile(currentState.project.id, file.path, file.content);
+      }
     };
 
     // 2. Build Gate

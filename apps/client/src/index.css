@@ -31,3 +31,27 @@ input::-ms-reveal,
 input::-ms-clear {
   display: none;
 }
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-app-bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-app-border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-app-muted);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-app-border) var(--color-app-bg);
+}

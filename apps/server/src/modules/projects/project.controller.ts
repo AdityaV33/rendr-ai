@@ -109,6 +109,70 @@ export async function generateProjectController(
     message: "Generation started in the background",
   });
 }
+
+export async function refineProjectController(
+  req: Request,
+  res: Response,
+) {
+  const projectId = req.params.projectId as string;
+  const prompt = req.body.prompt as string;
+
+  if (!prompt) {
+    throw new BadRequestError("Prompt is required for refinement.");
+  }
+
+  try {
+    // Atomically transition the state BEFORE returning 202
+    const project = await projectService.startRefinement(
+      req.user.id,
+      projectId
+    );
+
+    // Fire and forget
+    projectService.refineProject(
+      project,
+      prompt,
+    ).catch(err => console.error(`Background refinement failed for project ${projectId}`, err));
+
+    return res.status(202).json({
+      message: "Refinement started in the background",
+    });
+  } catch (error) {
+    throw new BadRequestError(error instanceof Error ? error.message : "Failed to start refinement");
+  }
+}
+
+export async function applyProjectController(
+  req: Request,
+  res: Response,
+) {
+  const projectId = req.params.projectId as string;
+
+  try {
+    const project = await projectService.applyProject(
+      req.user.id,
+      projectId,
+    );
+    return res.status(200).json(toProjectResponse(project));
+  } catch (error) {
+    throw new BadRequestError(error instanceof Error ? error.message : "Failed to apply changes");
+  }
+}
+
+export async function undoProjectController(
+  req: Request,
+  res: Response,
+) {
+  const projectId = req.params.projectId as string;
+
+  // We can await undo since it is fast
+  const project = await projectService.undoProject(
+    req.user.id,
+    projectId,
+  );
+
+  return res.status(200).json(toProjectResponse(project));
+}
 import { ZipArchive } from "archiver";
 
 export async function exportProject(req: Request, res: Response) {

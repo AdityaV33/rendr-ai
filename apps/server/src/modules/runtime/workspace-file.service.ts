@@ -60,6 +60,24 @@ export async function getWorkspaceFile(
   );
 }
 
+export async function deleteWorkspaceFile(
+  projectId: string,
+  filePath: string,
+): Promise<void> {
+  const workspacePath =
+    workspaceService.getWorkspacePath(
+      projectId,
+    );
+
+  const resolved =
+    resolveWorkspaceFilePath(
+      workspacePath,
+      filePath,
+    );
+
+  await filesystemService.removeFile(resolved);
+}
+
 export async function updateWorkspaceFile(
   projectId: string,
   filePath: string,

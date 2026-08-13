@@ -1,5 +1,6 @@
 import { env } from "../../../config/env.js";
 import { ModelMetrics } from "./types.js";
+import { pipelineRunContext } from "../utils/run-context.js";
 
 /**
  * AI Execution Scheduler Foundation
@@ -120,8 +121,13 @@ export class ModelSchedulerService {
     // We use a loop for automatic retry when all models are cooling down.
     while (true) {
       this.refreshCooldowns();
+      const context = pipelineRunContext.getStore();
+      const blacklistedModels = context?.blacklistedModels;
 
-      const availableModels = Array.from(this.models.values()).filter(m => m.status === "available");
+      const availableModels = Array.from(this.models.values()).filter(m => 
+        m.status === "available" && 
+        (!blacklistedModels || !blacklistedModels.has(m.name))
+      );
 
       if (availableModels.length > 0) {
         // Sort: Priority (lowest index is best) -> Lowest Active Requests -> Lowest Average Latency
@@ -140,7 +146,11 @@ export class ModelSchedulerService {
         // Synchronously mark as active to prevent race conditions across parallel calls
         selected.activeRequests += 1;
         
-        console.log(`[Scheduler] Selected: ${selected.name} | Active: ${selected.activeRequests}`);
+        if (blacklistedModels && blacklistedModels.size > 0) {
+          console.log(`[Scheduler] Selected: ${selected.name} | Active: ${selected.activeRequests} | (Skipping blacklisted: ${Array.from(blacklistedModels).join(", ")})`);
+        } else {
+          console.log(`[Scheduler] Selected: ${selected.name} | Active: ${selected.activeRequests}`);
+        }
         
         return selected.name;
       }
@@ -233,9 +243,7 @@ export class ModelSchedulerService {
       if (isRateLimit) {
         model.rateLimitCount += 1;
         reason = "429 Quota Exceeded / Rate Limited";
-        // Exponential backoff
-        const multiplier = Math.pow(2, model.consecutiveFailures - 1); // 1st = 1, 2nd = 2, 3rd = 4...
-        cooldownMs = Math.min(this.baseCooldownMs * multiplier, this.maxCooldownMs);
+        cooldownMs = 0; // Handled by run-scoped blacklist
       } else if (isServerFailure) {
         reason = `${status} Server Error`;
         // Short cooldown for 500s

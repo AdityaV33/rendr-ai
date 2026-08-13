@@ -15,19 +15,59 @@ function checkPortAvailable(
   port: number,
 ): Promise<boolean> {
   return new Promise((resolve) => {
-    const server = net.createServer();
+    // 1. Check if we can connect to 127.0.0.1
+    // If we can, it means the port is in use (e.g. by another Vite instance)
+    const socket = new net.Socket();
+    
+    let resolved = false;
+    const cleanup = () => {
+      if (!socket.destroyed) socket.destroy();
+    };
 
-    server.once("error", () => {
-      resolve(false);
+    socket.setTimeout(200);
+
+    socket.on("connect", () => {
+      if (resolved) return;
+      resolved = true;
+      cleanup();
+      resolve(false); // Port is IN USE
     });
 
-    server.once("listening", () => {
-      server.close(() => {
-        resolve(true);
-      });
+    socket.on("timeout", () => {
+      if (resolved) return;
+      resolved = true;
+      cleanup();
+      resolve(false); // Assume in use on timeout
     });
 
-    server.listen(port, "0.0.0.0");
+    socket.on("error", (err: any) => {
+      if (resolved) return;
+      
+      if (err.code === "ECONNREFUSED") {
+        // 2. 127.0.0.1 is free. Now check if we can bind 0.0.0.0
+        const server = net.createServer();
+        server.once("error", () => {
+          resolved = true;
+          cleanup();
+          resolve(false);
+        });
+        server.once("listening", () => {
+          server.close(() => {
+            if (resolved) return;
+            resolved = true;
+            cleanup();
+            resolve(true); // Port is TRULY FREE
+          });
+        });
+        server.listen(port, "0.0.0.0");
+      } else {
+        resolved = true;
+        cleanup();
+        resolve(false);
+      }
+    });
+
+    socket.connect(port, "127.0.0.1");
   });
 }
 

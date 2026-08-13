@@ -50,6 +50,24 @@ router.post(
   asyncHandler(projectController.generateProjectController),
 );
 
+router.post(
+  "/:projectId/refine",
+  requireAuth,
+  asyncHandler(projectController.refineProjectController),
+);
+
+router.post(
+  "/:projectId/undo",
+  requireAuth,
+  asyncHandler(projectController.undoProjectController),
+);
+
+router.post(
+  "/:projectId/apply",
+  requireAuth,
+  asyncHandler(projectController.applyProjectController),
+);
+
 router.delete(
   "/:projectId",
   requireAuth,

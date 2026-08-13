@@ -13,15 +13,15 @@ const BuilderLayout = ({
 }: BuilderLayoutProps) => {
   return (
     <div className="grid h-screen grid-cols-[280px_1fr_350px]">
-      <aside className="border-r border-neutral-800 bg-neutral-900">
+      <aside className="border-r border-[#333] bg-[#0a0a0a] overflow-hidden">
         {left}
       </aside>
 
-      <main className="overflow-hidden bg-neutral-950">
+      <main className="overflow-hidden bg-[#050505]">
         {center}
       </main>
 
-      <aside className="border-l border-neutral-800 bg-neutral-900">
+      <aside className="border-l border-[#333] bg-[#0a0a0a] overflow-hidden">
         {right}
       </aside>
     </div>

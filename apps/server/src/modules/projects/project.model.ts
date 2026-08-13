@@ -10,11 +10,24 @@ export type ProjectStatus =
   | "building"
   | "repairing"
   | "ready"
-  | "failed";
+  | "failed"
+  | "refining"
+  | "pending_changes";
 
 export type ProjectFramework =
   | "react-vite"
   | "vanilla";
+
+export interface Snapshot {
+  refinementId: string;
+  prompt: string;
+  createdAt: Date;
+  files: {
+    path: string;
+    existedBefore: boolean;
+    content: string;
+  }[];
+}
 
 export interface Project {
   owner: Types.ObjectId;
@@ -25,9 +38,11 @@ export interface Project {
   aiPlan: ProjectPlan | null;
   architecturePlan: ArchitecturePlan | null;
   generatedProject: GeneratedProject | null;
+  pendingProject: GeneratedProject | null;
   files: string[];
   pipelineStage: string | null;
   pipelineTimestamps: Record<string, Date> | null;
+  history: Snapshot[];
 
   createdAt: Date;
   updatedAt: Date;
@@ -66,8 +81,11 @@ const projectSchema = new Schema<Project>(
         "planning",
         "generating",
         "building",
+        "repairing",
         "ready",
         "failed",
+        "refining",
+        "pending_changes"
       ],
       default: "draft",
     },
@@ -87,6 +105,11 @@ const projectSchema = new Schema<Project>(
       default: null,
     },
 
+    pendingProject: {
+      type: Schema.Types.Mixed,
+      default: null,
+    },
+
     files: {
       type: [String],
       default: [],
@@ -100,6 +123,12 @@ const projectSchema = new Schema<Project>(
     pipelineTimestamps: {
       type: Schema.Types.Mixed,
       default: null,
+    },
+    
+    history: {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      type: [Schema.Types.Mixed] as any,
+      default: [],
     },
   },
   {

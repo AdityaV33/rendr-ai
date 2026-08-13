@@ -1,5 +1,6 @@
 import type { GenerationState } from "./state.js";
 import type { GraphEvent, GraphEventType } from "./types.js";
+import { pipelineRunContext } from "../utils/run-context.js";
 
 import type { PlannerNode } from "./nodes/planner.node.js";
 import type { ArchitectNode } from "./nodes/architect.node.js";
@@ -18,13 +19,14 @@ export class GenerationGraph {
     state: GenerationState, 
     onEvent?: (event: GraphEvent) => void
   ): Promise<GenerationState> {
+    let currentState = state;
     const emit = (type: GraphEventType, durationMs?: number) => {
       if (onEvent) {
         onEvent({ type, timestamp: Date.now(), durationMs, state: currentState });
       }
     };
-
-    let currentState = state;
+    
+    return pipelineRunContext.run({ blacklistedModels: new Set<string>() }, async () => {
     const startGraph = performance.now();
     emit("graph_started");
 
@@ -156,5 +158,6 @@ export class GenerationGraph {
     emit("graph_completed", currentState.metrics.totalMs);
 
     return currentState;
+    });
   }
 }

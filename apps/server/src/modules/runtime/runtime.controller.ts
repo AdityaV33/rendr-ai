@@ -109,6 +109,12 @@ export async function updateWorkspaceFile(
     projectId,
   );
 
+  if (project.status === "refining") {
+    return res.status(400).json({
+      message: "Cannot edit files while refinement is in progress.",
+    });
+  }
+
   // Update physical workspace file
   await workspaceFileService.updateWorkspaceFile(
     projectId,
