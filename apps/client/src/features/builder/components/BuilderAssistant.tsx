@@ -109,6 +109,7 @@ const BuilderAssistant = ({ onGenerate }: BuilderAssistantProps) => {
     const prev = previousStatusForEffectRef.current;
     if (currentProject?.status === "pending_changes" && prev && ["refining", "building", "repairing"].includes(prev)) {
       void clearOpenedFiles();
+      void loadWorkspaceTree();
       // Wait for the 1.5s timeline animation to complete before showing the success flash
       const outerTimer = setTimeout(() => {
         setShowReadyHighlight(true);
