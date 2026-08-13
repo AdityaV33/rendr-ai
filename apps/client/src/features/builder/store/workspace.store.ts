@@ -50,6 +50,7 @@ interface WorkspaceStore
   hasUnsavedChanges: () => boolean;
 
   clearWorkspace: () => void;
+  clearOpenedFiles: () => Promise<void>;
 }
 
 export const useWorkspaceStore =
@@ -369,6 +370,16 @@ export const useWorkspaceStore =
           saveError: null,
           saveSuccess: false,
         });
+      },
+
+      clearOpenedFiles: async () => {
+        const selectedFile = get().selectedFile;
+        set({ openedFiles: {} });
+        
+        // If a file was selected, re-open it to fetch the latest content from disk
+        if (selectedFile) {
+          await get().openFile(selectedFile);
+        }
       },
     }),
   );

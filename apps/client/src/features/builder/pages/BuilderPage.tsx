@@ -88,7 +88,7 @@ const BuilderPage = () => {
               
               const isDefinitivelyDone = newStage === "Ready" || newStage === "Failed" || newStage?.startsWith("Failed");
 
-              if ((newStatus === "ready" || newStatus === "failed") && isDefinitivelyDone) {
+              if (newStatus === "pending_changes" || ((newStatus === "ready" || newStatus === "failed") && isDefinitivelyDone)) {
                 if (pollingRef.current) {
                   clearInterval(pollingRef.current);
                   pollingRef.current = null;

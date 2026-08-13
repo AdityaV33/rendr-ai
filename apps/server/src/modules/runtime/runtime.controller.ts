@@ -128,18 +128,27 @@ export async function updateWorkspaceFile(
   }
 
   // Sync to database
-  if (project.generatedProject) {
+  const targetProject = (project.status === "pending_changes" && project.pendingProject) 
+    ? project.pendingProject 
+    : project.generatedProject;
+    
+  if (targetProject) {
     const normalizedFilePath = filePath.replace(/\\/g, "/");
-    const fileIndex = project.generatedProject.files.findIndex(
-      f => f.path.replace(/\\/g, "/") === normalizedFilePath
+    const fileIndex = targetProject.files.findIndex(
+      (f: { path: string }) => f.path.replace(/\\/g, "/") === normalizedFilePath
     );
     if (fileIndex >= 0) {
-      project.generatedProject.files[fileIndex].content = content;
+      targetProject.files[fileIndex].content = content;
     } else {
-      project.generatedProject.files.push({ path: normalizedFilePath, content });
+      targetProject.files.push({ path: normalizedFilePath, content });
       console.log(`[Runtime] Workspace file added/updated from template: ${normalizedFilePath}`);
     }
-    project.markModified("generatedProject");
+    
+    if (project.status === "pending_changes" && project.pendingProject) {
+      project.markModified("pendingProject");
+    } else {
+      project.markModified("generatedProject");
+    }
     await project.save();
     console.log(`[Runtime] Workspace file updated and persisted: ${normalizedFilePath}`);
   }

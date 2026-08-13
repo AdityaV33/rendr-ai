@@ -146,7 +146,13 @@ const BuilderHeader = ({
                 <p className="text-sm font-mono text-[#f87171]">Failed</p>
               </>
             )}
-            {project.status !== 'ready' && project.status !== 'failed' && (
+            {project.status === 'pending_changes' && (
+              <>
+                <div className="w-1.5 h-1.5 rounded-full bg-[#eab308]" />
+                <p className="text-sm font-mono text-[#eab308]">Pending Changes</p>
+              </>
+            )}
+            {project.status !== 'ready' && project.status !== 'failed' && project.status !== 'pending_changes' && (
               <>
                 <div className="w-1.5 h-1.5 rounded-full bg-[#a0a0a0]" />
                 <p className="text-sm font-mono text-[#a0a0a0] capitalize">{project.status}</p>

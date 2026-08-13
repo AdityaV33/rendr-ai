@@ -73,6 +73,7 @@ const BuilderAssistant = ({ onGenerate }: BuilderAssistantProps) => {
   const isUndoing = useBuilderStore((state) => state.isUndoing);
   const error = useBuilderStore((state) => state.error);
   const loadWorkspaceTree = useWorkspaceStore((state) => state.loadWorkspaceTree);
+  const clearOpenedFiles = useWorkspaceStore((state) => state.clearOpenedFiles);
 
   const [refinementPrompt, setRefinementPrompt] = useState("");
   const [isRefining, setIsRefining] = useState(false);
@@ -107,6 +108,7 @@ const BuilderAssistant = ({ onGenerate }: BuilderAssistantProps) => {
     let innerTimer: ReturnType<typeof setTimeout>;
     const prev = previousStatusForEffectRef.current;
     if (currentProject?.status === "pending_changes" && prev && ["refining", "building", "repairing"].includes(prev)) {
+      void clearOpenedFiles();
       // Wait for the 1.5s timeline animation to complete before showing the success flash
       const outerTimer = setTimeout(() => {
         setShowReadyHighlight(true);
@@ -148,6 +150,7 @@ const BuilderAssistant = ({ onGenerate }: BuilderAssistantProps) => {
     
     try {
       await applyProject(currentProject.id);
+      await clearOpenedFiles();
       setRefinementPrompt(""); // Clear prompt after successful apply
       toast.success("Changes Applied", "The refinement has been persisted successfully.");
     } catch {
@@ -160,6 +163,7 @@ const BuilderAssistant = ({ onGenerate }: BuilderAssistantProps) => {
     
     try {
       await undoProject(currentProject.id);
+      await clearOpenedFiles();
       await loadWorkspaceTree();
       toast.success("Undo Successful", "Project restored to previous state.");
     } catch {
