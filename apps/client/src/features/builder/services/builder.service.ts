@@ -79,6 +79,10 @@ const getWorkspaceFile = async (
     },
   );
 
+  if (response.data && typeof response.data.content === 'string') {
+    response.data.content = response.data.content.replace(/\r\n|\r/g, '\n');
+  }
+
   return response.data;
 };
 

@@ -51,7 +51,10 @@ interface WorkspaceStore
 
   clearWorkspace: () => void;
   clearOpenedFiles: () => Promise<void>;
+  closeFile: (filePath: string) => void;
 }
+
+let globalOpenFileToken = 0;
 
 export const useWorkspaceStore =
   create<WorkspaceStore>(
@@ -160,84 +163,59 @@ export const useWorkspaceStore =
           }
         },
 
-      openFile: async (
-        filePath,
-      ) => {
-        const projectId =
-          get().projectId;
+      openFile: async (filePath) => {
+        const currentToken = ++globalOpenFileToken;
+        const projectId = get().projectId;
+        if (!projectId) return;
 
-        if (!projectId) {
-          return;
-        }
-
-        const cached =
-          get().openedFiles[
-            filePath
-          ];
-
+        const cached = get().openedFiles[filePath];
         if (cached) {
-          set({
-            selectedFile:
-              filePath,
-          });
-
+          if (currentToken === globalOpenFileToken) {
+            set({ selectedFile: filePath });
+          }
           return;
         }
 
         try {
-          set({
-            openingFile: true,
-            error: null,
-          });
+          if (currentToken === globalOpenFileToken) {
+            set({ openingFile: true, error: null });
+          }
 
-          const file =
-            await getWorkspaceFile(
-              projectId,
-              filePath,
-            );
+          const file = await getWorkspaceFile(projectId, filePath);
 
-          const openedFile: OpenedFile =
-            {
-              path: file.path,
-              content:
-                file.content,
-              savedContent:
-                file.content,
+          const openedFile: OpenedFile = {
+            path: file.path,
+            content: file.content,
+            savedContent: file.content,
+          };
+
+          set((state) => {
+            const updates: Partial<WorkspaceStore> = {
+              openedFiles: {
+                ...state.openedFiles,
+                [filePath]: openedFile,
+              },
             };
-
-          set((state) => ({
-            openedFiles: {
-              ...state.openedFiles,
-              [filePath]:
-                openedFile,
-            },
-            selectedFile:
-              filePath,
-            openingFile: false,
-          }));
+            
+            if (currentToken === globalOpenFileToken) {
+              updates.selectedFile = filePath;
+              updates.openingFile = false;
+            }
+            
+            return updates;
+          });
         } catch (error) {
           if (axios.isAxiosError(error) && error.response?.status === 401) {
             throw error;
           }
 
-          let message =
-            "Failed to open file.";
-
-          if (
-            axios.isAxiosError(
-              error,
-            )
-          ) {
-            message =
-              error.response?.data
-                ?.message ??
-              message;
+          if (currentToken === globalOpenFileToken) {
+            let message = "Failed to open file.";
+            if (axios.isAxiosError(error)) {
+              message = error.response?.data?.message ?? message;
+            }
+            set({ error: message, openingFile: false });
           }
-
-          set({
-            error: message,
-            openingFile: false,
-          });
         }
       },
 
@@ -401,13 +379,61 @@ export const useWorkspaceStore =
       },
 
       clearOpenedFiles: async () => {
-        const selectedFile = get().selectedFile;
-        set({ openedFiles: {} });
+        const projectId = get().projectId;
+        if (!projectId) return;
+
+        const currentOpenedFiles = get().openedFiles;
+        const filePaths = Object.keys(currentOpenedFiles);
+        if (filePaths.length === 0) return;
+
+        // Fetch latest content for all currently opened files concurrently
+        const results = await Promise.allSettled(
+          filePaths.map(path => getWorkspaceFile(projectId, path))
+        );
+
+        const newOpenedFiles: Record<string, OpenedFile> = {};
         
-        // If a file was selected, re-open it to fetch the latest content from disk
-        if (selectedFile) {
-          await get().openFile(selectedFile);
+        results.forEach((result) => {
+          if (result.status === 'fulfilled') {
+            const file = result.value;
+            newOpenedFiles[file.path] = {
+              path: file.path,
+              content: file.content,
+              savedContent: file.content,
+            };
+          }
+        });
+
+        set((state) => {
+          let newSelectedFile = state.selectedFile;
+          // If the selected file was deleted (not in newOpenedFiles), pick another
+          if (newSelectedFile && !newOpenedFiles[newSelectedFile]) {
+            const remainingPaths = Object.keys(newOpenedFiles);
+            newSelectedFile = remainingPaths.length > 0 ? remainingPaths[0] : null;
+          }
+
+          return {
+            openedFiles: newOpenedFiles,
+            selectedFile: newSelectedFile,
+          };
+        });
+      },
+
+      closeFile: (filePath) => {
+        const state = get();
+        const newOpenedFiles = { ...state.openedFiles };
+        delete newOpenedFiles[filePath];
+
+        let newSelectedFile = state.selectedFile;
+        if (state.selectedFile === filePath) {
+          const remainingPaths = Object.keys(newOpenedFiles);
+          newSelectedFile = remainingPaths.length > 0 ? remainingPaths[0] : null;
         }
+
+        set({
+          openedFiles: newOpenedFiles,
+          selectedFile: newSelectedFile,
+        });
       },
     }),
   );
