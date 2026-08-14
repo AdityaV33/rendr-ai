@@ -34,7 +34,7 @@ async function runTest() {
   console.log(`\nCreated test project: ${projectId}`);
 
   // 2. Capture original generatedProject
-  const originalGeneratedFiles = JSON.parse(JSON.stringify(project.generatedProject.files));
+  const originalGeneratedFiles = JSON.parse(JSON.stringify(project.generatedProject!.files));
 
   // 3. Trigger refinement
   // Instead of full AI refine, we'll manually simulate the refinement generator output to avoid real LLM calls and latency.
@@ -47,7 +47,8 @@ async function runTest() {
     files: [
       { path: "src/App.tsx", content: "export default function App() { return <div>AI Refined</div> }" }
     ],
-    commands: { dev: "npm run dev", build: "npm run build" }
+    commands: { dev: "npm run dev", build: "npm run build", install: "npm install" },
+    project: { framework: "react", language: "typescript", packageManager: "npm", outputDirectory: "dist" }
   };
   project.status = "pending_changes";
   project.pipelineStage = "Pending Changes";
@@ -101,7 +102,7 @@ async function runTest() {
 
   // 10. Call Apply Changes
   console.log("\n--- APPLY CHANGES ---");
-  await projectService.applyProject(dummyOwner, projectId);
+  await projectService.applyProject(dummyOwner.toString(), projectId);
 
   const appliedProject = await ProjectModel.findById(projectId);
 
@@ -114,7 +115,7 @@ async function runTest() {
 
   // 12. Call Undo
   console.log("\n--- UNDO ---");
-  await projectService.undoProject(dummyOwner, projectId);
+  await projectService.undoProject(dummyOwner.toString(), projectId);
 
   const undoneProject = await ProjectModel.findById(projectId);
   const workspaceContent = await getWorkspaceFile(projectId, "src/App.tsx");
@@ -134,7 +135,8 @@ async function runTest() {
   undoneProject!.status = "pending_changes";
   undoneProject!.pendingProject = {
     files: [{ path: "src/App.tsx", content: "AI Edit 2" }],
-    commands: { dev: "npm run dev", build: "npm run build" }
+    commands: { dev: "npm run dev", build: "npm run build", install: "npm install" },
+    project: { framework: "react", language: "typescript", packageManager: "npm", outputDirectory: "dist" }
   };
   await undoneProject!.save();
   await updateWorkspaceFile(projectId, "src/App.tsx", "AI Edit 2");
@@ -143,7 +145,7 @@ async function runTest() {
   console.log(`2. Reached pending_changes: ${pendingProject2?.status === "pending_changes" ? "PASS" : "FAIL"}`);
 
   // 3, 4. Do NOT Apply. Call Undo.
-  await projectService.undoProject(dummyOwner, projectId);
+  await projectService.undoProject(dummyOwner.toString(), projectId);
 
   const preApplyUndoProject = await ProjectModel.findById(projectId);
   const workspaceContent2 = await getWorkspaceFile(projectId, "src/App.tsx");

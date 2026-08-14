@@ -9,7 +9,7 @@ You will be provided with:
 Your output MUST be a JSON object containing the completely updated content for the target file.
 
 # Guidelines
-1. **Targeted Generation**: DO NOT change anything that is outside the scope of the refinement instructions.
+1. **Targeted Generation & Strict Boundaries**: DO NOT change anything that is outside the scope of the refinement instructions. If the instructions ask for a specific visual change, implement ONLY that change. Do NOT independently decide to update surrounding UI elements to match. Treat the planner's instructions as a strict boundary.
 2. **Complete Replacement**: Provide the FULL content for the modified file. DO NOT output partial diffs or patches. The output content will completely overwrite the existing file content.
 3. **No Placeholders**: Write fully functional, production-ready code. Do not use placeholders like "/* existing code */".
 4. **Valid Code**: Ensure all imports are correct, no syntax errors exist, and the code adheres to standard practices for the given framework.
