@@ -9,7 +9,7 @@ import type { Project } from "../../projects/project.model.js";
 import type { HydratedDocument } from "mongoose";
 import { BadRequestError, InternalServerError } from "../../lib/http-error.js";
 import { getWorkspacePath } from "../../runtime/workspace.service.js";
-import { getWorkspaceFile, updateWorkspaceFile } from "../../runtime/workspace-file.service.js";
+import { getWorkspaceFile, updateWorkspaceFile, deleteWorkspaceFile } from "../../runtime/workspace-file.service.js";
 import { runProcess } from "../../runtime/process.service.js";
 import { DiagnosticParser } from "../repair/diagnostic-parser.js";
 import { RuleEngine } from "../repair/rule-engine.js";
@@ -85,7 +85,8 @@ ${fileTree}
         { temperature: 0.2, taskName: "Refinement Planner" }
       );
       planResult = refinementPlannerSchema.parse(raw);
-    } catch {
+    } catch (err) {
+      console.error("[Refinement] Failed to parse planner response:", err);
       throw new InternalServerError("Failed to generate refinement plan.");
     }
     const plannerTotalTime = performance.now() - plannerStart;
@@ -99,12 +100,40 @@ ${fileTree}
       throw new BadRequestError("Refinement rejected: Maximum of 2 logical changes allowed per request.");
     }
 
+    if (project.generatedProject) {
+      if (!project.pendingProject) {
+        project.pendingProject = { ...project.generatedProject, files: [...(project.generatedProject.files || [])] };
+      }
+      if (!project.pendingProject.files) {
+        project.pendingProject.files = [];
+      }
+    }
+
     // Prepare files and snapshot
     const filesToModify: { path: string; content?: string; isNew: boolean }[] = [];
     const snapshotFiles: { path: string; existedBefore: boolean; content: string }[] = [];
     
     for (const af of planResult.affectedFiles) {
-      if (!af.isNew) {
+      const action = (af as any).action;
+
+      if (action === "delete") {
+        if (project.pendingProject) {
+          const existingIdx = project.pendingProject.files.findIndex(pf => pf.path === af.path);
+          if (existingIdx !== -1) {
+            project.pendingProject.files.splice(existingIdx, 1);
+            project.markModified("pendingProject");
+          }
+        }
+        try {
+          await deleteWorkspaceFile(project._id.toString(), af.path);
+          console.log(`[Refinement] Explicitly deleted ${af.path}`);
+        } catch (err) {
+          console.warn(`[Refinement] Failed to delete ${af.path} from workspace, it might already be deleted.`);
+        }
+        continue;
+      }
+
+      if (action === "modify" || (!action && !(af as any).isNew)) {
         const content = await getWorkspaceFile(project._id.toString(), af.path);
         if (content === null) {
            console.warn(`[Refinement] Planner requested modification of ${af.path} but it does not exist. Treating as new.`);
@@ -157,14 +186,7 @@ ${fileTree}
       await updateWorkspaceFile(project._id.toString(), f.path, f.content);
       
       // Immediately update the pending in-memory manifest so the Repair Engine sees it
-      if (project.generatedProject) {
-        if (!project.pendingProject) {
-          // Initialize pending project from generated project
-          project.pendingProject = { ...project.generatedProject, files: [...(project.generatedProject.files || [])] };
-        }
-        if (!project.pendingProject.files) {
-          project.pendingProject.files = [];
-        }
+      if (project.generatedProject && project.pendingProject) {
         const existingIdx = project.pendingProject.files.findIndex(pf => pf.path === f.path);
         if (existingIdx !== -1) {
           project.pendingProject.files[existingIdx].content = f.content;
@@ -200,16 +222,7 @@ ${fileTree}
         const tscResult = await runProcess(pmCmd, ["exec", "tsc", "-b"], { cwd: workspacePath });
         tscTime += performance.now() - tscStart;
         
-        if (!tscResult.success) {
-          return tscResult;
-        }
-
-        // 2. Run vite build
-        const viteStart = performance.now();
-        const viteResult = await runProcess(pmCmd, ["exec", "vite", "build"], { cwd: workspacePath });
-        viteTime += performance.now() - viteStart;
-        
-        return viteResult;
+        return tscResult;
       } else {
         const [cmd, ...args] = cmdToRun.split(" ");
         return runProcess(cmd, args, { cwd: workspacePath });
@@ -301,10 +314,6 @@ ${fileTree}
     if (!runtimeState?.preview) {
        throw new Error("Preview verification failed: Preview is not running after start attempt.");
     }
-
-    // Wait 4 seconds for Vite/HMR to stabilize before declaring success
-    console.log("[Refinement] Waiting 4 seconds for preview stabilization...");
-    await new Promise(resolve => setTimeout(resolve, 4000));
 
     const verifyTotalTime = performance.now() - verifyStart;
     emit("verify_completed", verifyTotalTime);

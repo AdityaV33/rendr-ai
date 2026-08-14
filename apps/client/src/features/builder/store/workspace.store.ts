@@ -110,9 +110,37 @@ export const useWorkspaceStore =
                 projectId,
               );
 
+            const allPaths = new Set<string>();
+            const traverse = (nodes: any[]) => {
+              for (const n of nodes) {
+                allPaths.add(n.path);
+                if (n.children) traverse(n.children);
+              }
+            };
+            traverse(tree);
+
+            const state = get();
+            const newOpenedFiles = { ...state.openedFiles };
+            let currentSelected = state.selectedFile;
+            let filesChanged = false;
+
+            for (const p of Object.keys(newOpenedFiles)) {
+              if (!allPaths.has(p)) {
+                delete newOpenedFiles[p];
+                filesChanged = true;
+              }
+            }
+
+            if (currentSelected && !allPaths.has(currentSelected)) {
+               const remaining = Object.keys(newOpenedFiles);
+               currentSelected = remaining.length > 0 ? remaining[0] : null;
+               filesChanged = true;
+            }
+
             set({
               workspaceTree: tree,
               loadingWorkspace: false,
+              ...(filesChanged ? { openedFiles: newOpenedFiles, selectedFile: currentSelected } : {})
             });
           } catch (error) {
             if (axios.isAxiosError(error) && error.response?.status === 401) {
