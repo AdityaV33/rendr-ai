@@ -28,6 +28,24 @@ export class RefinementService {
     private readonly repairEngine: RepairEngineService
   ) {}
 
+  private cleanRawOutput(output: string): string {
+    let content = output.trim();
+    // Strip markdown code fences
+    const fenceMatch = content.match(/^```\w*\n([\s\S]*)\n```$/);
+    if (fenceMatch) {
+      content = fenceMatch[1];
+    } else {
+      // In case the model forgot the closing fence but had an opening one
+      if (content.startsWith("```")) {
+        const lines = content.split("\n");
+        lines.shift();
+        if (lines[lines.length - 1].startsWith("```")) lines.pop();
+        content = lines.join("\n");
+      }
+    }
+    return content.trim();
+  }
+
   async refine(
     project: HydratedDocument<Project>,
     prompt: string,
@@ -154,21 +172,15 @@ ${fileTree}
     emit("generator_started");
     const generatorStart = performance.now();
     
-    const outputSchema = z.object({
-      content: z.string()
-    });
-
     const generateFile = async (targetFile: { path: string, content?: string, isNew: boolean }) => {
        const prompt = buildRefinementGeneratorPrompt(planResult.instructions, targetFile, filesToModify);
        try {
-         const rawOutput = await this.gemini.generateStructured(
+         const rawOutput = await this.gemini.generateText(
            prompt,
-           zodToGeminiSchema(outputSchema),
            REFINEMENT_GENERATOR_SYSTEM_PROMPT,
-           { temperature: 0.1, taskName: `Refine: ${targetFile.path}` }
+           { timeoutMs: 30000, taskName: `Refine: ${targetFile.path}` }
          );
-         const parsed = outputSchema.parse(rawOutput);
-         return { path: targetFile.path, content: parsed.content };
+         return { path: targetFile.path, content: this.cleanRawOutput(rawOutput) };
        } catch {
          throw new InternalServerError(`Failed to generate targeted refinement code for ${targetFile.path}.`);
        }

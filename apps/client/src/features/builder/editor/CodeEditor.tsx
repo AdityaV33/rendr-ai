@@ -47,25 +47,6 @@ const CodeEditor = () => {
 
   const handleEditorMount: OnMount = useCallback(
     (editor, monaco) => {
-      // Configure TypeScript for React/JSX
-      monaco.languages.typescript.typescriptDefaults.setCompilerOptions({
-        target: monaco.languages.typescript.ScriptTarget.ESNext,
-        allowNonTsExtensions: true,
-        moduleResolution: monaco.languages.typescript.ModuleResolutionKind.NodeJs,
-        module: monaco.languages.typescript.ModuleKind.CommonJS,
-        noEmit: true,
-        esModuleInterop: true,
-        jsx: monaco.languages.typescript.JsxEmit.React,
-        reactNamespace: "React",
-        allowJs: true,
-        typeRoots: ["node_modules/@types"]
-      });
-
-      monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions({
-        noSemanticValidation: true,
-        noSyntaxValidation: false,
-      });
-
       editor.addCommand(
         monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS,
         () => {
@@ -91,6 +72,32 @@ const CodeEditor = () => {
       colors: {
         'editor.background': '#121212',
       }
+    });
+
+    const compilerOptions = {
+      target: monaco.languages.typescript.ScriptTarget.ESNext,
+      allowNonTsExtensions: true,
+      moduleResolution: monaco.languages.typescript.ModuleResolutionKind.NodeJs,
+      module: monaco.languages.typescript.ModuleKind.CommonJS,
+      noEmit: true,
+      esModuleInterop: true,
+      jsx: monaco.languages.typescript.JsxEmit.React,
+      reactNamespace: "React",
+      allowJs: true,
+      typeRoots: ["node_modules/@types"]
+    };
+
+    // Configure TypeScript for React/JSX
+    monaco.languages.typescript.typescriptDefaults.setCompilerOptions(compilerOptions);
+    monaco.languages.typescript.javascriptDefaults.setCompilerOptions(compilerOptions);
+
+    monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions({
+      noSemanticValidation: true,
+      noSyntaxValidation: false,
+    });
+    monaco.languages.typescript.javascriptDefaults.setDiagnosticsOptions({
+      noSemanticValidation: true,
+      noSyntaxValidation: false,
     });
   }, []);
 
@@ -220,7 +227,7 @@ const CodeEditor = () => {
         ) : (
           openedFiles[selectedFile] ? (
             <Editor
-              key={selectedFile}
+              path={`file:///${selectedFile}`}
               height="100%"
               theme="custom-dark"
               language={getLanguage(selectedFile)}
