@@ -125,11 +125,12 @@ const BuilderAssistant = ({ onGenerate }: BuilderAssistantProps) => {
         clearTimeout(innerTimer);
       };
     } else if (currentProject?.status === "pending_changes" && prev === "pending_changes") {
-      setIsPendingUIReady(true);
+      setTimeout(() => setIsPendingUIReady(true), 0);
     } else if (currentProject?.status !== "pending_changes") {
-      setIsPendingUIReady(false);
+      setTimeout(() => setIsPendingUIReady(false), 0);
     }
     previousStatusForEffectRef.current = currentProject?.status;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentProject?.status]);
 
   const handleRefine = async () => {

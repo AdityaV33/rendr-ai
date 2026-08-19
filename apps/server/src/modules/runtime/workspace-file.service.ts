@@ -59,8 +59,8 @@ export async function getWorkspaceFile(
     return await filesystemService.readFile(
       resolved,
     );
-  } catch (err: any) {
-    if (err.code === "ENOENT") {
+  } catch (err) {
+    if (err instanceof Error && 'code' in err && (err as NodeJS.ErrnoException).code === "ENOENT") {
       return null;
     }
     throw err;

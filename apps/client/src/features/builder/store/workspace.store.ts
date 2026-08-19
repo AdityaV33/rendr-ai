@@ -114,7 +114,8 @@ export const useWorkspaceStore =
               );
 
             const allPaths = new Set<string>();
-            const traverse = (nodes: any[]) => {
+            type TraverseNode = { path: string; children?: TraverseNode[] };
+            const traverse = (nodes: TraverseNode[]) => {
               for (const n of nodes) {
                 allPaths.add(n.path);
                 if (n.children) traverse(n.children);

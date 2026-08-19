@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Editor from "@monaco-editor/react";
-import type { OnMount } from "@monaco-editor/react";
+import type { OnMount, Monaco } from "@monaco-editor/react";
 
 import { useWorkspaceStore } from "@/features/builder/store/workspace.store";
 
@@ -64,7 +64,7 @@ const CodeEditor = () => {
     [saveCurrentFile],
   );
 
-  const handleEditorWillMount = useCallback((monaco: any) => {
+  const handleEditorWillMount = useCallback((monaco: Monaco) => {
     monaco.editor.defineTheme('custom-dark', {
       base: 'vs-dark',
       inherit: true,

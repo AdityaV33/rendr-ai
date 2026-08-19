@@ -40,7 +40,7 @@ function checkPortAvailable(
       resolve(false); // Assume in use on timeout
     });
 
-    socket.on("error", (err: any) => {
+    socket.on("error", (err: Error & { code?: string }) => {
       if (resolved) return;
       
       if (err.code === "ECONNREFUSED") {

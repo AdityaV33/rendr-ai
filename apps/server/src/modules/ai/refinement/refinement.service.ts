@@ -1,4 +1,4 @@
-import { z } from "zod";
+
 import { GeminiService } from "../clients/gemini.service.js";
 import { RepairEngineService } from "../repair/repair-engine.service.js";
 import { REFINEMENT_PLANNER_SYSTEM_PROMPT } from "../prompts/refinement-planner.prompt.js";
@@ -132,7 +132,7 @@ ${fileTree}
     const snapshotFiles: { path: string; existedBefore: boolean; content: string }[] = [];
     
     for (const af of planResult.affectedFiles) {
-      const action = (af as any).action;
+      const action = (af as { action?: string }).action;
 
       if (action === "delete") {
         if (project.pendingProject) {
@@ -145,13 +145,13 @@ ${fileTree}
         try {
           await deleteWorkspaceFile(project._id.toString(), af.path);
           console.log(`[Refinement] Explicitly deleted ${af.path}`);
-        } catch (err) {
+        } catch {
           console.warn(`[Refinement] Failed to delete ${af.path} from workspace, it might already be deleted.`);
         }
         continue;
       }
 
-      if (action === "modify" || (!action && !(af as any).isNew)) {
+      if (action === "modify" || (!action && !(af as { isNew?: boolean }).isNew)) {
         const content = await getWorkspaceFile(project._id.toString(), af.path);
         if (content === null) {
            console.warn(`[Refinement] Planner requested modification of ${af.path} but it does not exist. Treating as new.`);
@@ -219,9 +219,9 @@ ${fileTree}
     // Break down build timing
     let buildResult;
     let tscTime = 0;
-    let viteTime = 0;
+    const viteTime = 0;
     
-    let cmdToRun = project.generatedProject?.commands.build || "npm run build";
+    const cmdToRun = project.generatedProject?.commands.build || "npm run build";
     const framework = project.architecturePlan?.stack.frontendFramework;
     
     const runBuild = async () => {
