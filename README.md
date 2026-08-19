@@ -53,11 +53,14 @@ RendrAI decomposes generation into specialized stages that independently plan, a
 - Export (.zip)
 - Better streaming UI
 
-### 🚧 Next
-- Multi-page applications
+### 🚧 Next — Phase 9
 - Deployment infrastructure
+- Production process management
+- Deployment hardening
+- Production polish
 
 ### 🔮 Future
+- Multi-page applications
 - Next.js support
 - Backend generation
 - One-click deployment
