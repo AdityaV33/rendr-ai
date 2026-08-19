@@ -39,7 +39,7 @@ RendrAI decomposes generation into specialized stages that independently plan, a
 - Architecture Manifest
 - Build validation
 - Automatic repair engine
-- Isolated workspace/build environment
+- Local workspace/build environment
 - Live preview
 - React application generation
 - Type-safe code generation
@@ -71,7 +71,7 @@ RendrAI decomposes generation into specialized stages that independently plan, a
 - **Deterministic architecture manifest**
 - **Automated build validation**
 - **Targeted TypeScript repair engine**
-- **Isolated workspace/build environment**
+- **Local workspace/build environment**
 - **Live application preview**
 - **Prompt-driven architectural invariants**
 
@@ -120,7 +120,7 @@ User Prompt
  Repair Engine
      │
      ▼
- Isolated Workspace
+ Local Workspace
      │
      ▼
  Live Preview
@@ -133,7 +133,7 @@ The AI generation is broken down into a strict, verifiable pipeline to enforce a
 3. **Generator (`generator-v2.service.ts`)**: Iterates through the manifest and writes the actual React/TypeScript code for each file. Files are generated in dependency-aware layers, allowing independent components to be generated concurrently for significantly faster project synthesis. The Generator is strictly forbidden from inventing APIs, renaming fields, inferring types, or outputting placeholder UIs. It must perfectly adhere to the contracts defined by the Architect.
 4. **Validator (`gate-runner.node.ts`)**: Runs `tsc` to verify that the generated code is syntactically correct and adheres to the architecture.
 5. **Repair Engine (`repair.prompt.ts`)**: If the Validator finds TypeScript errors, the Repair Engine analyzes the `tsc` diagnostic output. It reconciles conflicting files back to the immutable `ArchitectureManifest` and issues targeted file-level repairs until the application successfully compiles or the repair budget is exhausted.
-6. **Preview (`runtime-manager.service.ts`)**: The generated application is built inside an isolated workspace/build environment before being validated and launched in a Vite preview server.
+6. **Preview (`runtime-manager.service.ts`)**: The generated application is written to a local runtime workspace, validated with TypeScript, and launched in a Vite preview server managed by the server runtime.
 
 ## Deterministic Architecture Manifest
 Every generation is governed by a canonical Architecture Manifest. The manifest defines:
@@ -167,7 +167,7 @@ The pipeline enforces strict generation invariants including:
 | Typical API Calls | 6–8 |
 | Max Repair Attempts | 3 |
 | Build Validator | TypeScript (`tsc`) |
-| Runtime Isolation | Isolated Workspace |
+| Runtime Execution | Native Local Processes |
 
 Typical benchmark performance (approximate full generation):
 
