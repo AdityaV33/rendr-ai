@@ -12,7 +12,8 @@ export interface ParsedDiagnostic {
 
 export interface RepairContext {
   diagnostics: ParsedDiagnostic[];
-  affectedFiles: { path: string; content: string }[];
+  editableFiles: { path: string; content: string }[];
+  contextOnlyFiles: { path: string; content: string }[];
   architecture: ArchitecturePlan;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   contracts: Record<string, any>;

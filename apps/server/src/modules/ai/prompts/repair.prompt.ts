@@ -9,9 +9,14 @@ export const buildGateRepairPrompt = (
 ): { system: string, prompt: string } => {
 
   const manifest = buildArchitectureManifest(context.architecture, context.contracts);
-  const projectFilesContext = context.affectedFiles
+  const editableFilesContext = context.editableFiles
     .map(f => `### ${f.path}\n\`\`\`tsx\n${f.content}\n\`\`\``)
     .join("\n\n");
+    
+  const readonlyFilesContext = context.contextOnlyFiles.length > 0 
+    ? `\n# Read-Only Context Files\nThe following files are provided for context only. You MAY NOT modify these files:\n\n` + 
+      context.contextOnlyFiles.map(f => `### ${f.path}\n\`\`\`tsx\n${f.content}\n\`\`\``).join("\n\n")
+    : "";
     
   const diagnosticSummary = context.diagnostics.map(d => 
     `- ${d.file ? `[${d.file}]` : ""} ${d.code}: ${d.message}`
@@ -23,7 +28,7 @@ Your task is to fix the errors by providing the corrected source code for any fi
 Rules:
 1. Fix ONLY the reported errors. Do not redesign the application.
 2. Provide the COMPLETE file content for any file you modify. Do not provide partial snippets.
-3. You are FORBIDDEN from modifying any file that was not provided in the "Affected Files" section. Only return modified files from the provided list.
+3. You are FORBIDDEN from modifying any file that was not provided in the "Editable Files" section. Only return modified files from the "Editable Files" list. Do not modify "Read-Only Context Files".
 4. STRICT FRAMEWORK BOUNDARY:
    - If Framework is 'vanilla' or 'vanilla-js', NEVER output React, JSX, Hooks, or Providers. Provide plain HTML, CSS, and JS.
    - If Framework is 'react-vite', NEVER provide vanilla DOM manipulation (e.g. document.getElementById) unless strictly necessary.
@@ -65,10 +70,11 @@ Strategies: ${context.architecture.strategies.join(", ")}
 
 ${manifest}
 
-# Affected Files (Read & Write Context)
+# Editable Files
 You may ONLY provide replacements for these specific files:
 
-${projectFilesContext}`;
+${editableFilesContext}
+${readonlyFilesContext}`;
 
   return { system, prompt };
 };
