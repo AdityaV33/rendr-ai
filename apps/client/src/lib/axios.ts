@@ -1,6 +1,7 @@
 import axios from "axios";
 
 import { tokenManager } from "@/lib/token-manager";
+import { toast } from "@/lib/toast";
 
 const api = axios.create({
   baseURL: "http://localhost:3000/api/v1",
@@ -33,9 +34,7 @@ const triggerAuthRedirect = (error: unknown) => {
   ) {
     if (!isRedirectingToLogin) {
       isRedirectingToLogin = true;
-      import("@/lib/toast").then(({ toast }) => {
-        toast.error("Session expired.");
-      });
+      toast.error("Session expired.");
 
       window.location.replace("/login");
     }
