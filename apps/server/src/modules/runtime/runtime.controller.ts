@@ -31,7 +31,7 @@ export async function stopRuntime(
   const projectId = req.params
     .projectId as string;
 
-  runtimeManagerService.stopRuntime(
+  await runtimeManagerService.stopRuntime(
     projectId,
   );
 

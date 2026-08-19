@@ -56,7 +56,7 @@ export async function startPreviewOnly(
     const existingRuntime = runtimeService.getRuntimeState(projectId);
     if (existingRuntime?.preview) {
       console.log("[Runtime] Stopping existing preview before starting new one");
-      stopPreview(existingRuntime.preview);
+      await stopPreview(existingRuntime.preview);
     }
 
     const preview = await startPreview(
@@ -129,9 +129,9 @@ export async function startRuntime(
   return startPreviewOnly(projectId, project.generatedProject?.commands.dev ?? "npm run dev");
 }
 
-export function stopRuntime(
+export async function stopRuntime(
   projectId: string,
-): void {
+): Promise<void> {
   const runtime =
     runtimeService.getRuntimeState(
       projectId,
@@ -142,7 +142,7 @@ export function stopRuntime(
   }
 
   if (runtime.preview) {
-    stopPreview(runtime.preview);
+    await stopPreview(runtime.preview);
   }
 
   runtimeService.updateRuntimeStatus(

@@ -2,10 +2,11 @@ import {
   ChildProcess,
   SpawnOptions,
   spawn,
-  exec,
-  execSync,
 } from "node:child_process";
-import os from "node:os";
+import treeKill from "tree-kill";
+import { promisify } from "node:util";
+
+const killTree = promisify(treeKill as (pid: number, signal: string, callback: (err?: Error) => void) => void);
 
 export interface ProcessResult {
   success: boolean;
@@ -31,8 +32,10 @@ export function runProcess(
       command,
       args,
       {
-        shell: true,
         ...options,
+        // Enforce process-group policy on Unix for reliable termination, and shell only on Windows.
+        shell: process.platform === "win32",
+        detached: process.platform !== "win32",
       },
     );
 
@@ -74,10 +77,12 @@ export function startProcess(
   const child = spawn(
     command,
     args,
-    {
-      shell: true,
-      ...options,
-    },
+      {
+        ...options,
+        // Enforce process-group policy on Unix for reliable termination, and shell only on Windows.
+        shell: process.platform === "win32",
+        detached: process.platform !== "win32",
+      },
   );
 
   managedProcesses.add(child);
@@ -89,45 +94,87 @@ export function startProcess(
   return child;
 }
 
+const activeStops = new WeakMap<ChildProcess, Promise<void>>();
+
 export function stopProcess(
   childProcess: ChildProcess,
-): void {
-  if (!childProcess.killed && childProcess.pid) {
-    if (os.platform() === "win32") {
-      exec(`taskkill /pid ${childProcess.pid} /t /f`, () => {
-        // Ignore errors from taskkill
-      });
-    } else {
-      childProcess.kill();
-    }
+): Promise<void> {
+  if (activeStops.has(childProcess)) {
+    return activeStops.get(childProcess)!;
   }
 
-  managedProcesses.delete(childProcess);
+  const promise = (async () => {
+    try {
+      if (!childProcess.pid || childProcess.killed || !managedProcesses.has(childProcess)) {
+        managedProcesses.delete(childProcess);
+        return;
+      }
+
+      const pid = childProcess.pid;
+
+      try {
+        if (process.platform === "win32") {
+          await killTree(pid, "SIGTERM");
+        } else {
+          process.kill(-pid, "SIGTERM");
+        }
+      } catch {
+        // Ignored, might have already exited
+      }
+
+      // Grace period
+      let waited = 0;
+      while (managedProcesses.has(childProcess) && waited < 2000) {
+        await new Promise(r => setTimeout(r, 100));
+        waited += 100;
+      }
+
+      if (managedProcesses.has(childProcess)) {
+        try {
+          if (process.platform === "win32") {
+            await killTree(pid, "SIGKILL");
+          } else {
+            process.kill(-pid, "SIGKILL");
+          }
+        } catch {
+          // Ignored
+        }
+      }
+
+      managedProcesses.delete(childProcess);
+    } finally {
+      activeStops.delete(childProcess);
+    }
+  })();
+
+  activeStops.set(childProcess, promise);
+  return promise;
+}
+
+/**
+ * Forcefully kill a process tree or group without a grace period.
+ * Used for escalation if a port remains bound.
+ */
+export async function forceKillProcess(childProcess: ChildProcess): Promise<void> {
+  if (!childProcess.pid) return;
+  try {
+    if (process.platform === "win32") {
+      await killTree(childProcess.pid, "SIGKILL");
+    } else {
+      process.kill(-childProcess.pid, "SIGKILL");
+    }
+  } catch {
+    // Ignored, may have already exited
+  }
 }
 
 /**
  * Terminate every managed child process.
  * Called during graceful shutdown to prevent orphaned preview servers.
  */
-export function stopAllProcesses(): void {
-  for (const child of managedProcesses) {
-    if (!child.killed && child.pid) {
-      if (os.platform() === "win32") {
-        try {
-          execSync(
-            `taskkill /pid ${child.pid} /t /f`,
-            { stdio: "ignore" },
-          );
-        } catch {
-          // Process may have already exited
-        }
-      } else {
-        child.kill("SIGTERM");
-      }
-    }
-  }
-
-  managedProcesses.clear();
+export async function stopAllProcesses(): Promise<void> {
+  const processes = Array.from(managedProcesses);
+  await Promise.allSettled(processes.map((child) => stopProcess(child)));
 }
 
 /**
@@ -136,11 +183,11 @@ export function stopAllProcesses(): void {
  * before the backend exits.
  */
 function registerShutdownHandlers(): void {
-  const shutdown = (signal: string) => {
+  const shutdown = async (signal: string) => {
     console.log(
       `\n[Process Manager] Received ${signal}, stopping all managed processes...`,
     );
-    stopAllProcesses();
+    await stopAllProcesses();
     process.exit(0);
   };
 

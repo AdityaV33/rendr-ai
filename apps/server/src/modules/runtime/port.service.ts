@@ -11,7 +11,7 @@ const reservedPorts = new Set<number>();
  * Check whether a port is actually available at the OS level
  * by attempting to bind a temporary TCP server to it.
  */
-function checkPortAvailable(
+export function checkPortAvailable(
   port: number,
 ): Promise<boolean> {
   return new Promise((resolve) => {
@@ -115,4 +115,19 @@ export function isPortReserved(
   port: number,
 ): boolean {
   return reservedPorts.has(port);
+}
+
+export async function waitForPortRelease(
+  port: number,
+  timeoutMs: number = 3000,
+): Promise<boolean> {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    const isFree = await checkPortAvailable(port);
+    if (isFree) {
+      return true;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 200));
+  }
+  return false;
 }
