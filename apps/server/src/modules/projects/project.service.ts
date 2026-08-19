@@ -1,9 +1,10 @@
 import crypto from "node:crypto";
-import { ProjectModel } from "./project.model.js";
+import type { HydratedDocument } from "mongoose";
+import { ProjectModel, type Project } from "./project.model.js";
 import {
   CreateProjectInput, UpdateProjectInput,} from "./project.validation.js";
 import { aiService } from "../ai/index.js";
-import { NotFoundError } from "../lib/http-error.js";
+import { NotFoundError, ConflictError } from "../lib/http-error.js";
 import * as workspaceService from "../runtime/workspace.service.js";
 import * as runtimeManagerService from "../runtime/runtime-manager.service.js";
 import * as workspaceFileService from "../runtime/workspace-file.service.js";
@@ -106,14 +107,29 @@ export async function deleteProject(
   return project;
 }
 
-export async function generateProject(owner: string, projectId: string) {
-  const project = await ProjectModel.findOne({ owner, _id: projectId });
-  if (!project) {
-    throw new NotFoundError("Project not found");
-  }
+export async function startGeneration(owner: string, projectId: string) {
+  const project = await ProjectModel.findOneAndUpdate(
+    {
+      _id: projectId,
+      owner,
+      status: { $in: ["draft", "ready", "failed"] }
+    },
+    { $set: { status: "generating", pipelineStage: "Initializing Generation..." } },
+    { returnDocument: "after" }
+  );
 
-  project.status = "generating";
-  await project.save();
+  if (!project) {
+    const exists = await ProjectModel.exists({ _id: projectId, owner });
+    if (!exists) {
+      throw new NotFoundError("Project not found");
+    }
+    throw new ConflictError("Project is already generating or in an active state.");
+  }
+  return project;
+}
+
+export async function generateProject(project: HydratedDocument<Project>) {
+  const projectId = project._id.toString();
 
   let runtimeTime = 0;
   const startOverall = performance.now();
@@ -310,7 +326,7 @@ export async function startRefinement(owner: string, projectId: string) {
   return project;
 }
 
-export async function refineProject(project: import("mongoose").HydratedDocument<import("./project.model.js").Project>, prompt: string) {
+export async function refineProject(project: HydratedDocument<Project>, prompt: string) {
   const projectId = project._id.toString();
 
   const rollbackFiles = JSON.parse(JSON.stringify(project.generatedProject?.files || []));

@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 import path from "node:path";
 
-import { NotFoundError, BadRequestError } from "../lib/http-error.js";
+import { NotFoundError, BadRequestError, ConflictError } from "../lib/http-error.js";
 import { toProjectResponse } from "./project.mapper.js";
 import * as projectService from "./project.service.js";
 
@@ -99,15 +99,25 @@ export async function generateProjectController(
 ) {
   const projectId = req.params.projectId as string;
 
-  // Fire and forget the background generation
-  projectService.generateProject(
-    req.user.id,
-    projectId,
-  ).catch(err => console.error(`Background generation failed for project ${projectId}`, err));
+  try {
+    const project = await projectService.startGeneration(
+      req.user.id,
+      projectId
+    );
 
-  return res.status(202).json({
-    message: "Generation started in the background",
-  });
+    // Fire and forget the background generation
+    projectService.generateProject(project)
+      .catch(err => console.error(`Background generation failed for project ${projectId}`, err));
+
+    return res.status(202).json({
+      message: "Generation started in the background",
+    });
+  } catch (error) {
+    if (error instanceof NotFoundError || error instanceof BadRequestError || error instanceof ConflictError) {
+      throw error;
+    }
+    throw new BadRequestError(error instanceof Error ? error.message : "Failed to start generation");
+  }
 }
 
 export async function refineProjectController(
