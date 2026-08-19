@@ -159,6 +159,10 @@ export class ModelSchedulerService {
       let earliestExpiry = Infinity;
       const coolingModels = Array.from(this.models.values()).filter(m => m.status === "coolingDown");
       
+      if (coolingModels.length === 0) {
+        throw new Error("All models are currently exhausted (blacklisted or no cooldowns pending). Cannot acquire a model.");
+      }
+      
       const cooldownLogs = coolingModels.map(m => {
         const remaining = m.cooldownExpiryTimestamp ? Math.max(0, m.cooldownExpiryTimestamp - Date.now()) : 0;
         if (m.cooldownExpiryTimestamp && m.cooldownExpiryTimestamp < earliestExpiry) {
