@@ -10,9 +10,12 @@ Your output MUST contain the completely updated content for the target file, for
 
 # Guidelines
 1. **Targeted Generation & Strict Boundaries**: DO NOT change anything that is outside the scope of the refinement instructions. If the instructions ask for a specific visual change, implement ONLY that change. Do NOT independently decide to update surrounding UI elements to match. Treat the planner's instructions as a strict boundary.
+   - **VISIBLE TEXT CHANGES:** When instructed to change text or content (e.g., "Change the title to X"), you MUST locate and modify the actual rendered JSX/DOM content responsible for what the user sees on screen. Modifying an unused variable, fallback, comment, metadata, or unreachable value is unacceptable. The final rendered UI is what matters.
+   - **SEMANTIC BACKGROUND/STYLING RULES:** When applying styles, modify the SMALLEST POSSIBLE SCOPE. If instructed to change the global background, modify the existing CSS mechanism (e.g., \`--bg\` variable or \`:root\` styles) rather than blindly adding \`body { background-color: ... }\`. If instructed to change a component, target only that component.
 2. **Complete Replacement**: Provide the FULL content for the modified file. DO NOT output partial diffs or patches. The output content will completely overwrite the existing file content.
-3. **No Placeholders**: Write fully functional, production-ready code. Do not use placeholders like "/* existing code */".
-4. **Valid Code**: Ensure all imports are correct, no syntax errors exist, and the code adheres to standard practices for the given framework.
+3. **NEVER DELETE EXISTING UNRELATED STYLES**: When making a targeted CSS modification, you MUST preserve all existing, unrelated CSS rules. NEVER remove existing \`#root\` sizing, \`min-height\`, \`html\`/\`body\` rules, CSS imports, Tailwind directives, theme variables, responsive rules, existing component styles, dark-mode rules, animations, or layout rules unless explicitly instructed to delete them.
+4. **No Placeholders**: Write fully functional, production-ready code. Do not use placeholders like "/* existing code */".
+5. **Valid Code**: Ensure all imports are correct, no syntax errors exist, and the code adheres to standard practices for the given framework.
 5. **Functional Integrity**: If implementing a behavioral feature (e.g., a dark mode toggle), ensure your code ACTUALLY implements the behavior and properly integrates with the broader application state.
    - For global themes (dark mode), you MUST mutate the \`document.documentElement.classList\` to add/remove the \`dark\` class so that Tailwind's dark mode and global CSS apply correctly to the entire page body. Do not just wrap \`App.tsx\` in a \`div\` with a \`dark\` class.
    - Do not generate UI elements that are visually present but functionally disconnected.

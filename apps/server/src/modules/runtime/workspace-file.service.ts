@@ -43,7 +43,7 @@ export async function getWorkspaceTree(
 export async function getWorkspaceFile(
   projectId: string,
   filePath: string,
-): Promise<string> {
+): Promise<string | null> {
   const workspacePath =
     workspaceService.getWorkspacePath(
       projectId,
@@ -55,9 +55,16 @@ export async function getWorkspaceFile(
       filePath,
     );
 
-  return filesystemService.readFile(
-    resolved,
-  );
+  try {
+    return await filesystemService.readFile(
+      resolved,
+    );
+  } catch (err: any) {
+    if (err.code === "ENOENT") {
+      return null;
+    }
+    throw err;
+  }
 }
 
 export async function deleteWorkspaceFile(
@@ -220,7 +227,9 @@ export async function collectAllFiles(
       if (node.type === "file") {
         try {
           const content = await getWorkspaceFile(projectId, normalizedPath);
-          files.push({ path: normalizedPath, content });
+          if (content !== null) {
+            files.push({ path: normalizedPath, content });
+          }
         } catch (err) {
           console.error(`[Runtime] Failed to read workspace file during collection: ${normalizedPath}`, err);
         }

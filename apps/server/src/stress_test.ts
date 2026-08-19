@@ -13,7 +13,7 @@ async function runStressTest() {
   await connectDatabase();
   const scheduler = new ModelSchedulerService();
   const gemini = new GeminiService(scheduler);
-  const repairEngine = new RepairEngineService(gemini, scheduler);
+  const repairEngine = new RepairEngineService(gemini);
   const refinementService = new RefinementService(gemini, repairEngine);
 
   let project = await ProjectModel.findById('6a7beac6f83255ce557bf6ea');
@@ -48,14 +48,14 @@ async function runStressTest() {
     
     const startTime = performance.now();
     let success = true;
-    let errorMsg = null;
+    let errorMsg: string | null = null;
     try {
-      await refinementService.refine(project, prompt);
+      await refinementService.refine(project!, prompt);
       console.log(`✅ Refinement succeeded!`);
       
-      project = await ProjectModel.findById(project._id);
+      project = await ProjectModel.findById(project!._id);
       
-      if (project.status === "pending_changes") {
+      if (project && project.status === "pending_changes") {
         project.generatedProject = project.pendingProject;
         project.pendingProject = null;
         project.status = "ready";
@@ -67,8 +67,8 @@ async function runStressTest() {
       success = false;
       errorMsg = err.message;
       
-      project = await ProjectModel.findById(project._id);
-      if (project.status !== "ready") {
+      project = await ProjectModel.findById(project!._id);
+      if (project && project.status !== "ready") {
         project.status = "ready";
         project.pendingProject = null;
         await project.save();

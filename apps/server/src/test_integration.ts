@@ -124,7 +124,7 @@ async function runTest() {
   const isBackToOriginal = undoneProject?.generatedProject?.files.some(f => f.content.includes("Original") && !f.content.includes("Manual"));
   console.log(`13/14. generatedProject returned to original canonical state: ${isBackToOriginal ? "PASS" : "FAIL"}`);
   console.log(`15. pendingProject is empty: ${!undoneProject?.pendingProject ? "PASS" : "FAIL"}`);
-  console.log(`16. workspace files match restored generatedProject: ${workspaceContent.includes("Original") ? "PASS" : "FAIL"}`);
+  console.log(`16. workspace files match restored generatedProject: ${workspaceContent?.includes("Original") ? "PASS" : "FAIL"}`);
   console.log(`17. status is ready: ${undoneProject?.status === "ready" ? "PASS" : "FAIL"}`);
 
 
@@ -154,7 +154,7 @@ async function runTest() {
   console.log(`5. pendingProject discarded: ${!preApplyUndoProject?.pendingProject ? "PASS" : "FAIL"}`);
   const isGenOriginal = preApplyUndoProject?.generatedProject?.files.some(f => f.content.includes("Original"));
   console.log(`6. generatedProject remains unchanged: ${isGenOriginal ? "PASS" : "FAIL"}`);
-  console.log(`7. workspace matches generatedProject: ${workspaceContent2.includes("Original") ? "PASS" : "FAIL"}`);
+  console.log(`7. workspace matches generatedProject: ${workspaceContent2?.includes("Original") ? "PASS" : "FAIL"}`);
   console.log(`8. status returns to ready: ${preApplyUndoProject?.status === "ready" ? "PASS" : "FAIL"}`);
 
   process.exit(0);

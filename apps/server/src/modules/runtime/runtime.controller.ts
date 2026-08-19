@@ -6,6 +6,7 @@ import type {
 import * as runtimeManagerService from "./runtime-manager.service.js";
 import * as workspaceFileService from "./workspace-file.service.js";
 import * as projectService from "../projects/project.service.js";
+import { NotFoundError } from "../lib/http-error.js";
 
 export async function startRuntime(
   req: Request,
@@ -70,6 +71,10 @@ export async function getWorkspaceFile(
       projectId,
       filePath,
     );
+
+  if (content === null) {
+    throw new NotFoundError("File not found in workspace");
+  }
 
   return res.status(200).json({
     path: filePath,
