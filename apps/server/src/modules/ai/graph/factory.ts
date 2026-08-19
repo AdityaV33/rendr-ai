@@ -1,4 +1,6 @@
 import { GeminiService } from "../clients/gemini.service.js";
+import { GroqService } from "../clients/groq.service.js";
+import { GroqSchedulerService } from "../scheduler/groq-scheduler.service.js";
 import { PlannerService } from "../planner/planner.service.js";
 import { ArchitectService } from "../architect/architect.service.js";
 import { GeneratorV2Service } from "../generator/generator-v2.service.js";
@@ -16,10 +18,12 @@ import { GenerationGraph } from "./graph.js";
 export function createGenerationGraph(geminiService: GeminiService): GenerationGraph {
     // 1. Create base services and engines
     const templateEngine = new TemplateEngine();
+    const groqService = new GroqService();
+    const groqSchedulerService = new GroqSchedulerService(groqService);
 
     // 2. Create AI pipeline services
-    const plannerService = new PlannerService(geminiService);
-    const architectService = new ArchitectService(geminiService);
+    const plannerService = new PlannerService(groqSchedulerService);
+    const architectService = new ArchitectService(groqSchedulerService);
     const generatorV2Service = new GeneratorV2Service(geminiService, templateEngine);
     const sanityGateService = new SanityGateService();
     const repairEngineService = new RepairEngineService(geminiService);

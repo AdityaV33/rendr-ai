@@ -10,7 +10,7 @@ test('ModelSchedulerService - 429 Run-Scoped Exclusion', async (t) => {
   const scheduler = new ModelSchedulerService();
 
   await t.test('qualifying 429 blacklists the model only for the current run', async () => {
-    await pipelineRunContext.run({ blacklistedModels: new Set<string>() }, async () => {
+    await pipelineRunContext.run({ blacklistedModels: new Set<string>(), groqExcludedModels: new Set<string>() }, async () => {
       const model = await scheduler.acquireModel();
       assert.equal(model, 'model-A');
 
@@ -27,14 +27,14 @@ test('ModelSchedulerService - 429 Run-Scoped Exclusion', async (t) => {
 
   await t.test('the next run can select it again', async () => {
     // In a new run context, model-A should be available again
-    await pipelineRunContext.run({ blacklistedModels: new Set<string>() }, async () => {
+    await pipelineRunContext.run({ blacklistedModels: new Set<string>(), groqExcludedModels: new Set<string>() }, async () => {
       const model = await scheduler.acquireModel();
       assert.equal(model, 'model-A'); // model-A is back!
     });
   });
 
   await t.test('503 does not blacklist it', async () => {
-    await pipelineRunContext.run({ blacklistedModels: new Set<string>() }, async () => {
+    await pipelineRunContext.run({ blacklistedModels: new Set<string>(), groqExcludedModels: new Set<string>() }, async () => {
       const model = await scheduler.acquireModel();
       assert.equal(model, 'model-A');
 
@@ -53,7 +53,7 @@ test('ModelSchedulerService - 429 Run-Scoped Exclusion', async (t) => {
   await t.test('timeout does not blacklist it', async () => {
     // We recreate scheduler to clear the 503 cooldown from previous test
     const cleanScheduler = new ModelSchedulerService();
-    await pipelineRunContext.run({ blacklistedModels: new Set<string>() }, async () => {
+    await pipelineRunContext.run({ blacklistedModels: new Set<string>(), groqExcludedModels: new Set<string>() }, async () => {
       const model = await cleanScheduler.acquireModel();
       
       // Simulate timeout
@@ -66,7 +66,7 @@ test('ModelSchedulerService - 429 Run-Scoped Exclusion', async (t) => {
 
   await t.test('parallel/concurrent selection observes a blacklist created by another task', async () => {
     const cleanScheduler = new ModelSchedulerService();
-    await pipelineRunContext.run({ blacklistedModels: new Set<string>() }, async () => {
+    await pipelineRunContext.run({ blacklistedModels: new Set<string>(), groqExcludedModels: new Set<string>() }, async () => {
       // Task 1 gets model-A
       const model1 = await cleanScheduler.acquireModel();
       assert.equal(model1, 'model-A');
@@ -84,7 +84,7 @@ test('ModelSchedulerService - 429 Run-Scoped Exclusion', async (t) => {
 
   await t.test('throws error if all models are blacklisted', async () => {
     const cleanScheduler = new ModelSchedulerService();
-    await pipelineRunContext.run({ blacklistedModels: new Set<string>() }, async () => {
+    await pipelineRunContext.run({ blacklistedModels: new Set<string>(), groqExcludedModels: new Set<string>() }, async () => {
       const context = pipelineRunContext.getStore();
       context?.blacklistedModels.add('model-A');
       context?.blacklistedModels.add('model-B');

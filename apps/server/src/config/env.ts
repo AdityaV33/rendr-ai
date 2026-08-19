@@ -40,9 +40,19 @@ const envSchema = z.object({
 
   GEMINI_TIMEOUT_MS: z.coerce.number().positive().default(120000), // 2 minutes
 
-  GEMINI_GENERATOR_TIMEOUT_MS: z.coerce.number().positive().default(30000), // 30 seconds
+  GEMINI_GENERATOR_TIMEOUT_MS: z.coerce.number().default(30000),
 
-  GEMINI_REPAIR_TIMEOUT_MS: z.coerce.number().positive().default(30000), // 30 seconds
+  GEMINI_REPAIR_TIMEOUT_MS: z.coerce.number().default(30000),
+
+  // Groq settings
+  GROQ_API_KEY: z.string().optional(),
+  GROQ_MODELS: z
+    .string()
+    .default("qwen/qwen3.6-27b,openai/gpt-oss-20b,openai/gpt-oss-120b")
+    .transform((val) => val.split(",").map((s) => s.trim()).filter(Boolean))
+    .refine((arr) => arr.length > 0, {
+      message: "GROQ_MODELS must contain at least one valid model.",
+    }),
 
   MODEL_COOLDOWN_MS: z.coerce.number().positive().default(30000),
 

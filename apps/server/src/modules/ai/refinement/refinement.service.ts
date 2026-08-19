@@ -65,7 +65,7 @@ export class RefinementService {
 
     const startTotal = performance.now();
     
-    return pipelineRunContext.run({ blacklistedModels: new Set<string>() }, async () => {
+    return pipelineRunContext.run({ blacklistedModels: new Set<string>(), groqExcludedModels: new Set<string>() }, async () => {
 
     // 1. Refinement Planner
     emit("planner_started");

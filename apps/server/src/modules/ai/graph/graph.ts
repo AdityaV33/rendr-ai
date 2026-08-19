@@ -26,7 +26,7 @@ export class GenerationGraph {
       }
     };
     
-    return pipelineRunContext.run({ blacklistedModels: new Set<string>() }, async () => {
+    return pipelineRunContext.run({ blacklistedModels: new Set<string>(), groqExcludedModels: new Set<string>() }, async () => {
     const startGraph = performance.now();
     emit("graph_started");
 
