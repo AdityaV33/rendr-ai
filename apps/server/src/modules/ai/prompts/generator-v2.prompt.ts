@@ -236,14 +236,14 @@ Any other local imports not listed in Allowed Imports.
   }
 
   prompt = appendBehaviorContext(prompt, behavioralContract);
-  prompt = appendFrameworkRules(prompt, architecturePlan.stack.frontendFramework);
+  prompt = appendFrameworkRules(prompt);
 
   prompt += `
 Output raw source code for this file.`;
 
   const contractsSize = JSON.stringify(allContracts || {}).length;
   const behaviorSize = JSON.stringify(behavioralContract || {}).length;
-  const frameworkRulesSize = appendFrameworkRules("", architecturePlan.stack.frontendFramework).length;
+  const frameworkRulesSize = appendFrameworkRules("").length;
   const manifestSize = manifest.length;
   const estimatedTokens = Math.ceil((GENERATOR_V2_SYSTEM_PROMPT.length + prompt.length) / 4);
 
@@ -316,7 +316,7 @@ You MUST export exactly these symbols: ${exportsList}. Do not rename or add addi
   }
 
   prompt = appendBehaviorContext(prompt, behavioralContract);
-  prompt = appendFrameworkRules(prompt, architecturePlan.stack.frontendFramework);
+  prompt = appendFrameworkRules(prompt);
 
   prompt += `
 Rules for App.tsx:
@@ -330,7 +330,7 @@ Output raw source code for this file.`;
   const serializedProjectPlanSize = JSON.stringify(projectPlan || {}).length;
   const contractsSize = JSON.stringify(allContracts || {}).length;
   const behaviorSize = JSON.stringify(behavioralContract || {}).length;
-  const frameworkRulesSize = appendFrameworkRules("", architecturePlan.stack.frontendFramework).length;
+  const frameworkRulesSize = appendFrameworkRules("").length;
   const manifestSize = manifest.length;
   const estimatedTokens = Math.ceil((GENERATOR_V2_SYSTEM_PROMPT.length + prompt.length) / 4);
 
@@ -426,7 +426,7 @@ You MUST NOT import any other files from this project unless listed here.
     }
   }
 
-  prompt = appendFrameworkRules(prompt, architecturePlan.stack.frontendFramework);
+  prompt = appendFrameworkRules(prompt);
 
   prompt += `
 RETURN FORMAT:
