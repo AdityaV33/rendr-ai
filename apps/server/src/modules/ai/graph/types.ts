@@ -17,6 +17,9 @@ export type GraphEventType =
   | "validator_started" | "validator_completed"
   | "repair_started" | "repair_completed"
   | "gate_runner_started" | "gate_runner_completed"
+  | "install_started" | "install_completed"
+  | "build_started" | "build_completed"
+  | "preview_started" | "verify_started"
   | "graph_started" | "graph_completed";
 import type { GenerationState } from "./state.js";
 

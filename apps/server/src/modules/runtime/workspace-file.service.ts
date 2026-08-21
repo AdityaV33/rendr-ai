@@ -43,7 +43,7 @@ export async function getWorkspaceTree(
 export async function getWorkspaceFile(
   projectId: string,
   filePath: string,
-): Promise<string> {
+): Promise<string | null> {
   const workspacePath =
     workspaceService.getWorkspacePath(
       projectId,
@@ -55,9 +55,34 @@ export async function getWorkspaceFile(
       filePath,
     );
 
-  return filesystemService.readFile(
-    resolved,
-  );
+  try {
+    return await filesystemService.readFile(
+      resolved,
+    );
+  } catch (err) {
+    if (err instanceof Error && 'code' in err && (err as NodeJS.ErrnoException).code === "ENOENT") {
+      return null;
+    }
+    throw err;
+  }
+}
+
+export async function deleteWorkspaceFile(
+  projectId: string,
+  filePath: string,
+): Promise<void> {
+  const workspacePath =
+    workspaceService.getWorkspacePath(
+      projectId,
+    );
+
+  const resolved =
+    resolveWorkspaceFilePath(
+      workspacePath,
+      filePath,
+    );
+
+  await filesystemService.removeFile(resolved);
 }
 
 export async function updateWorkspaceFile(
@@ -170,4 +195,50 @@ export async function writeValidationProject(
 ): Promise<void> {
   const workspacePath = workspaceService.getValidationWorkspacePath(projectId);
   await writeProjectFiles(workspacePath, generatedFiles);
+}
+
+export async function collectAllFiles(
+  projectId: string,
+): Promise<{ path: string; content: string }[]> {
+  const workspacePath = workspaceService.getWorkspacePath(projectId);
+  const allNodes = await filesystemService.listDirectory(workspacePath, workspacePath);
+  
+  const files: { path: string; content: string }[] = [];
+  const normalizePath = (p: string) => p.replace(/\\/g, "/");
+
+  const collect = async (nodes: filesystemService.WorkspaceFileNode[], currentPath: string = "") => {
+    for (const node of nodes) {
+      if (node.name === "node_modules" || node.name === ".git") continue;
+      
+      const nodePath = currentPath ? `${currentPath}/${node.name}` : node.name;
+      const normalizedPath = normalizePath(nodePath);
+
+      // Explicit exclusion list for runtime artifacts
+      if (
+        normalizedPath.startsWith("dist/") ||
+        normalizedPath.startsWith(".cache/") ||
+        normalizedPath === "dist" ||
+        normalizedPath === ".cache" ||
+        normalizedPath.endsWith(".log")
+      ) {
+        continue;
+      }
+
+      if (node.type === "file") {
+        try {
+          const content = await getWorkspaceFile(projectId, normalizedPath);
+          if (content !== null) {
+            files.push({ path: normalizedPath, content });
+          }
+        } catch (err) {
+          console.error(`[Runtime] Failed to read workspace file during collection: ${normalizedPath}`, err);
+        }
+      } else if (node.children) {
+        await collect(node.children, nodePath);
+      }
+    }
+  };
+
+  await collect(allNodes);
+  return files;
 }

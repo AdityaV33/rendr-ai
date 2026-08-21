@@ -12,6 +12,24 @@ const generateProject = async (projectId: string) => {
   return response.data;
 };
 
+const refineProject = async (projectId: string, prompt: string) => {
+  const response = await api.post(`/projects/${projectId}/refine`, { prompt });
+
+  return response.data;
+};
+
+const undoProject = async (projectId: string) => {
+  const response = await api.post(`/projects/${projectId}/undo`);
+
+  return response.data;
+};
+
+const applyProject = async (projectId: string) => {
+  const response = await api.post(`/projects/${projectId}/apply`);
+
+  return response.data;
+};
+
 const startRuntime = async (projectId: string) => {
   const response = await api.post(
     `/runtime/${projectId}/start`,
@@ -61,6 +79,10 @@ const getWorkspaceFile = async (
     },
   );
 
+  if (response.data && typeof response.data.content === 'string') {
+    response.data.content = response.data.content.replace(/\r\n|\r/g, '\n');
+  }
+
   return response.data;
 };
 
@@ -95,4 +117,7 @@ export {
   getWorkspaceFile,
   updateWorkspaceFile,
   deleteProject,
+  refineProject,
+  undoProject,
+  applyProject,
 };

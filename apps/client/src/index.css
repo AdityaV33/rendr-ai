@@ -1,1 +1,57 @@
 @import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", "sans-serif";
+  --font-mono: "VT323", "monospace";
+
+  --color-app-bg: #090909;
+  --color-app-secondary: #111111;
+  --color-app-panel: #171717;
+  --color-app-border: #2A2A2A;
+  --color-app-text: #F5F5F5;
+  --color-app-muted: #A0A0A0;
+}
+
+body {
+  @apply bg-app-bg text-app-text font-sans antialiased;
+}
+
+/* Fix Chrome autofill background */
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus, 
+input:-webkit-autofill:active{
+    -webkit-box-shadow: 0 0 0 30px #1a1a1a inset !important;
+    -webkit-text-fill-color: #f5f5f5 !important;
+    transition: background-color 5000s ease-in-out 0s;
+}
+
+/* Hide native password reveal eye icon in Edge/IE */
+input::-ms-reveal,
+input::-ms-clear {
+  display: none;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-app-bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-app-border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-app-muted);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-app-border) var(--color-app-bg);
+}

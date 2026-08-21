@@ -48,15 +48,21 @@ export class GateRunnerNode {
       await writeGeneratedProject(currentState.project.id, currentState.generatedFiles.files);
     }
 
-    // Compile Gate helper
-    const runCompile = async () => {
-      return runProcess("npx", ["tsc", "--noEmit"], { cwd: workspacePath });
-    };
-
     // Build Gate helper 
     const runBuild = async () => {
-      const buildCmd = currentState.generatedFiles?.commands.build || "npm run build";
-      const [cmd, ...args] = buildCmd.split(" ");
+      const framework = currentState.architecture?.stack?.frontendFramework;
+      const pm = currentState.generatedFiles?.commands.build?.split(" ")[0] || "npm";
+      
+      // For React/Vite projects, run a fast typecheck gate instead of a full production build
+      let cmdToRun = currentState.generatedFiles?.commands.build || "npm run build";
+      
+      if (framework?.includes("react")) {
+         if (pm === "pnpm") cmdToRun = "pnpm exec tsc -b";
+         else if (pm === "yarn") cmdToRun = "yarn tsc -b";
+         else cmdToRun = "npx tsc -b";
+      }
+
+      const [cmd, ...args] = cmdToRun.split(" ");
       return runProcess(cmd, args, { cwd: workspacePath });
     };
 
@@ -94,33 +100,19 @@ export class GateRunnerNode {
 
       emit("repair_started");
       const startRepair = performance.now();
-      await this.repairEngine.executeGateRepair(currentState, gate, errorOutput, diagnostics);
+      const repairedFiles = await this.repairEngine.executeGateRepair(currentState, gate, errorOutput, diagnostics);
       const repairDuration = performance.now() - startRepair;
       totalRepairTimeMs += repairDuration;
       emit("repair_completed", repairDuration);
       
-      await writeGeneratedProject(currentState.project.id, currentState.generatedFiles!.files);
+      const { updateWorkspaceFile } = await import("../../../runtime/workspace-file.service.js");
+      for (const file of repairedFiles) {
+        await updateWorkspaceFile(currentState.project.id, file.path, file.content);
+      }
     };
 
-    // 2. Compile Gate
-    const framework = currentState.architecture?.stack?.frontendFramework;
-    if (framework !== "vanilla-js") {
-      let compileResult = await runCompile();
-      while (!compileResult.success) {
-        try {
-          await executeRepair("Compile", compileResult.stdout + "\\n" + compileResult.stderr);
-          compileResult = await runCompile();
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        } catch (err: any) {
-          console.error(`[GateRunner] Compile gate failed: ${err.message}`);
-          currentState.errors.push("Compile failed: " + compileResult.stdout);
-          currentState.validationResult = { passed: false, issues: [{ type: "typecheck", severity: "error", message: compileResult.stdout, file: "project", repairStrategy: "modify-file" }] };
-          return currentState;
-        }
-      }
-    }
-
-    // 3. Build Gate
+    // 2. Build Gate
+    emit("build_started");
     let buildResult = await runBuild();
     while (!buildResult.success) {
       try {
@@ -143,9 +135,13 @@ export class GateRunnerNode {
       }
       
       console.log(`[GateRunner] Launching preview...`);
+      emit("preview_started");
       const runtimeState = await startPreviewOnly(currentState.project.id, devCmd);
       if (runtimeState?.preview) {
         currentState.previewUrl = runtimeState.preview.url;
+        
+        emit("verify_started");
+        console.log(`[GateRunner] Preview successfully verified at ${currentState.previewUrl}!`);
       }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {

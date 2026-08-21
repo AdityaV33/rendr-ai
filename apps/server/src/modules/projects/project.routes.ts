@@ -32,6 +32,12 @@ router.get(
   asyncHandler(projectController.getProjectById),
 );
 
+router.get(
+  "/:projectId/export",
+  requireAuth,
+  asyncHandler(projectController.exportProject),
+);
+
 router.patch(
   "/:projectId",
   requireAuth,
@@ -42,6 +48,24 @@ router.post(
   "/:projectId/generate",
   requireAuth,
   asyncHandler(projectController.generateProjectController),
+);
+
+router.post(
+  "/:projectId/refine",
+  requireAuth,
+  asyncHandler(projectController.refineProjectController),
+);
+
+router.post(
+  "/:projectId/undo",
+  requireAuth,
+  asyncHandler(projectController.undoProjectController),
+);
+
+router.post(
+  "/:projectId/apply",
+  requireAuth,
+  asyncHandler(projectController.applyProjectController),
 );
 
 router.delete(

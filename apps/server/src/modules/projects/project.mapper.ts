@@ -15,6 +15,9 @@ export interface ProjectResponse {
   updatedAt: Project["updatedAt"];
   generatedProject?: Project["generatedProject"];
   architecturePlan?: Project["architecturePlan"];
+  pipelineStage?: Project["pipelineStage"];
+  historyCount?: number;
+  hasPendingChanges?: boolean;
 }
 
 export function toProjectResponse(
@@ -33,5 +36,8 @@ export function toProjectResponse(
     updatedAt: project.updatedAt,
     generatedProject: project.generatedProject,
     architecturePlan: project.architecturePlan,
+    pipelineStage: project.pipelineStage,
+    historyCount: project.history?.length ?? 0,
+    hasPendingChanges: !!project.pendingProject,
   };
 }

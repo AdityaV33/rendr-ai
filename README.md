@@ -1,19 +1,19 @@
 # RendrAI
 
-![Status](https://img.shields.io/badge/Phase_7_Complete-success)
+![Status](https://img.shields.io/badge/Phase_8_Complete-success)
 ![Version](https://img.shields.io/badge/version-v1.0-blue)
 ![Pipeline](https://img.shields.io/badge/Pipeline-Stable-brightgreen)
 ![License](https://img.shields.io/badge/License-MIT-blue.svg)
 
 > Autonomous AI application generation pipeline.
 
-RendrAI is an autonomous AI application generation platform that transforms a natural-language prompt into a complete, production-ready React frontend application. Unlike traditional single-prompt generators, RendrAI uses deterministic architectural contracts and staged validation to reduce hallucinations and cross-file inconsistencies.
+**RendrAI is an autonomous AI application generation platform that transforms a natural-language prompt into a complete React frontend application. Unlike traditional single-prompt generators, RendrAI uses deterministic architectural contracts, dependency-aware generation, staged validation, automated repair, and an interactive builder workspace to reduce hallucinations and cross-file inconsistencies.**
 
 ## Why RendrAI?
 
 Most AI code generators rely on a single LLM response.
 
-RendrAI decomposes generation into specialized stages that independently plan, architect, generate, validate, and repair applications before presenting a live preview.
+RendrAI decomposes generation into specialized stages that independently plan, architect, generate, validate, and repair applications before presenting the application in an interactive live-preview workspace.
 
 ## Project Roadmap
 
@@ -27,8 +27,8 @@ RendrAI decomposes generation into specialized stages that independently plan, a
 | Phase 5 – AI Pipeline | ✅ Complete |
 | Phase 6 – Runtime & Preview | ✅ Complete |
 | Phase 7 – Validation & Repair | ✅ Complete |
-| Phase 8 – Builder UI, Persistence & Export | 🚧 In Progress |
-| Phase 9 – Deployment & Polish | ⏳ Planned |
+| Phase 8 – Builder UI, Persistence & Export | ✅ Complete |
+| Phase 9 – Deployment & Polish | 🚧 In Progress |
 
 ## Current Capabilities
 
@@ -39,22 +39,30 @@ RendrAI decomposes generation into specialized stages that independently plan, a
 - Architecture Manifest
 - Build validation
 - Automatic repair engine
-- Docker runtime
+- Local workspace/build environment
 - Live preview
 - React application generation
 - Type-safe code generation
-
-### 🚧 Next
 - Builder Workspace
+  - File explorer
+  - Monaco editor
+  - AI refinement
+  - Live preview synchronization
+  - Undo/revert
 - Project persistence
 - Export (.zip)
-- Project refinement
 - Better streaming UI
 
+### 🚧 Next — Phase 9
+- Deployment infrastructure
+- Production process management
+- Deployment hardening
+- Production polish
+
 ### 🔮 Future
+- Multi-page applications
 - Next.js support
 - Backend generation
-- Multi-page applications
 - One-click deployment
 
 ## Engineering Highlights
@@ -63,7 +71,7 @@ RendrAI decomposes generation into specialized stages that independently plan, a
 - **Deterministic architecture manifest**
 - **Automated build validation**
 - **Targeted TypeScript repair engine**
-- **Docker sandbox execution**
+- **Local workspace/build environment**
 - **Live application preview**
 - **Prompt-driven architectural invariants**
 
@@ -73,7 +81,7 @@ RendrAI decomposes generation into specialized stages that independently plan, a
 
 RendrAI operates across two distinct domains:
 
-- **AI Pipeline (Server):** Node.js, Express, MongoDB, LangGraph orchestration, Google Gemini (Flash Lite).
+- **AI Pipeline (Server):** Node.js, Express, MongoDB, Custom Graph Orchestration, Google Gemini (Flash Lite).
 - **Client Application:** React, Vite, TailwindCSS, Zustand, Monaco Editor.
 - **Generated Applications:** React (Single-Page), Vite, TailwindCSS.
 
@@ -85,7 +93,6 @@ rendr-ai/
 │   ├── client/          # Builder UI
 │   └── server/          # AI Pipeline
 ├── tools/               # Benchmarking tools
-├── archive/             # Historical metrics
 └── README.md
 ```
 
@@ -113,7 +120,7 @@ User Prompt
  Repair Engine
      │
      ▼
- Docker Runtime
+ Local Workspace
      │
      ▼
  Live Preview
@@ -126,7 +133,7 @@ The AI generation is broken down into a strict, verifiable pipeline to enforce a
 3. **Generator (`generator-v2.service.ts`)**: Iterates through the manifest and writes the actual React/TypeScript code for each file. Files are generated in dependency-aware layers, allowing independent components to be generated concurrently for significantly faster project synthesis. The Generator is strictly forbidden from inventing APIs, renaming fields, inferring types, or outputting placeholder UIs. It must perfectly adhere to the contracts defined by the Architect.
 4. **Validator (`gate-runner.node.ts`)**: Runs `tsc` to verify that the generated code is syntactically correct and adheres to the architecture.
 5. **Repair Engine (`repair.prompt.ts`)**: If the Validator finds TypeScript errors, the Repair Engine analyzes the `tsc` diagnostic output. It reconciles conflicting files back to the immutable `ArchitectureManifest` and issues targeted file-level repairs until the application successfully compiles or the repair budget is exhausted.
-6. **Preview (`runtime-manager.service.ts`)**: The generated application is built inside an isolated Docker workspace before being validated and launched in a Vite preview server.
+6. **Preview (`runtime-manager.service.ts`)**: The generated application is written to a local runtime workspace, validated with TypeScript, and launched in a Vite preview server managed by the server runtime.
 
 ## Deterministic Architecture Manifest
 Every generation is governed by a canonical Architecture Manifest. The manifest defines:
@@ -160,9 +167,9 @@ The pipeline enforces strict generation invariants including:
 | Typical API Calls | 6–8 |
 | Max Repair Attempts | 3 |
 | Build Validator | TypeScript (`tsc`) |
-| Runtime Isolation | Docker |
+| Runtime Execution | Native Local Processes |
 
-Typical benchmark performance:
+Typical benchmark performance (approximate full generation):
 
 | Stage | Average Time |
 |--------|--------|
@@ -180,7 +187,6 @@ Typical benchmark performance:
 - pnpm (`npm install -g pnpm`)
 - MongoDB (Local or Atlas URL)
 - Google Gemini API Key
-- Docker (for isolated workspace generation)
 
 ### Installation
 
@@ -214,7 +220,6 @@ pnpm typecheck
 - React SPA generation only
 - No backend/API generation yet
 - No Next.js generation yet
-- Export and Builder UI arrive in Phase 8
 
 ## License
 

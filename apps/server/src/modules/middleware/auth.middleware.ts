@@ -21,7 +21,14 @@ export async function requireAuth(
 
   const accessToken = authorization.split(" ")[1];
 
-  const payload = verifyAccessToken(accessToken);
+  let payload;
+  try {
+    payload = verifyAccessToken(accessToken);
+  } catch {
+    return res.status(401).json({
+      message: "Session expired or invalid token.",
+    });
+  }
 
   req.user = {
     id: payload.sub,

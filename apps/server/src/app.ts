@@ -27,10 +27,11 @@ app.use(
         return callback(null, true);
       }
 
-      // In development, also allow dynamic localhost ports (e.g. Vite starting on 5174 instead of 5173)
+      // In development, also allow dynamic localhost ports and local network IPs (LAN testing)
       if (env.NODE_ENV === "development") {
         const isLocalhost = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
-        if (isLocalhost) {
+        const isLocalNetwork = /^https?:\/\/(10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[0-1])\.)\d{1,3}\.\d{1,3}(:\d+)?$/.test(origin);
+        if (isLocalhost || isLocalNetwork) {
           return callback(null, true);
         }
       }

@@ -6,6 +6,7 @@ import type {
 import * as runtimeManagerService from "./runtime-manager.service.js";
 import * as workspaceFileService from "./workspace-file.service.js";
 import * as projectService from "../projects/project.service.js";
+import { NotFoundError } from "../lib/http-error.js";
 
 export async function startRuntime(
   req: Request,
@@ -71,6 +72,10 @@ export async function getWorkspaceFile(
       filePath,
     );
 
+  if (content === null) {
+    throw new NotFoundError("File not found in workspace");
+  }
+
   return res.status(200).json({
     path: filePath,
     content,
@@ -109,6 +114,12 @@ export async function updateWorkspaceFile(
     projectId,
   );
 
+  if (project.status === "refining") {
+    return res.status(400).json({
+      message: "Cannot edit files while refinement is in progress.",
+    });
+  }
+
   // Update physical workspace file
   await workspaceFileService.updateWorkspaceFile(
     projectId,
@@ -122,19 +133,29 @@ export async function updateWorkspaceFile(
   }
 
   // Sync to database
-  if (project.generatedProject) {
+  const targetProject = (project.status === "pending_changes" && project.pendingProject) 
+    ? project.pendingProject 
+    : project.generatedProject;
+    
+  if (targetProject) {
     const normalizedFilePath = filePath.replace(/\\/g, "/");
-    const fileIndex = project.generatedProject.files.findIndex(
-      f => f.path.replace(/\\/g, "/") === normalizedFilePath
+    const fileIndex = targetProject.files.findIndex(
+      (f: { path: string }) => f.path.replace(/\\/g, "/") === normalizedFilePath
     );
     if (fileIndex >= 0) {
-      project.generatedProject.files[fileIndex].content = content;
-      project.markModified("generatedProject");
-      await project.save();
-      console.log(`[Runtime] Workspace file updated and persisted: ${normalizedFilePath}`);
+      targetProject.files[fileIndex].content = content;
     } else {
-      console.log(`[Runtime] Workspace file updated: ${normalizedFilePath} (Template file)`);
+      targetProject.files.push({ path: normalizedFilePath, content });
+      console.log(`[Runtime] Workspace file added/updated from template: ${normalizedFilePath}`);
     }
+    
+    if (project.status === "pending_changes" && project.pendingProject) {
+      project.markModified("pendingProject");
+    } else {
+      project.markModified("generatedProject");
+    }
+    await project.save();
+    console.log(`[Runtime] Workspace file updated and persisted: ${normalizedFilePath}`);
   }
 
   return res.status(200).json({

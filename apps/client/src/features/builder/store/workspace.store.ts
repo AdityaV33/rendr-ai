@@ -50,7 +50,11 @@ interface WorkspaceStore
   hasUnsavedChanges: () => boolean;
 
   clearWorkspace: () => void;
+  clearOpenedFiles: () => Promise<void>;
+  closeFile: (filePath: string) => void;
 }
+
+let globalOpenFileToken = 0;
 
 export const useWorkspaceStore =
   create<WorkspaceStore>(
@@ -109,23 +113,48 @@ export const useWorkspaceStore =
                 projectId,
               );
 
+            const allPaths = new Set<string>();
+            type TraverseNode = { path: string; children?: TraverseNode[] };
+            const traverse = (nodes: TraverseNode[]) => {
+              for (const n of nodes) {
+                allPaths.add(n.path);
+                if (n.children) traverse(n.children);
+              }
+            };
+            traverse(tree);
+
+            const state = get();
+            const newOpenedFiles = { ...state.openedFiles };
+            let currentSelected = state.selectedFile;
+            let filesChanged = false;
+
+            for (const p of Object.keys(newOpenedFiles)) {
+              if (!allPaths.has(p)) {
+                delete newOpenedFiles[p];
+                filesChanged = true;
+              }
+            }
+
+            if (currentSelected && !allPaths.has(currentSelected)) {
+               const remaining = Object.keys(newOpenedFiles);
+               currentSelected = remaining.length > 0 ? remaining[0] : null;
+               filesChanged = true;
+            }
+
             set({
               workspaceTree: tree,
               loadingWorkspace: false,
+              ...(filesChanged ? { openedFiles: newOpenedFiles, selectedFile: currentSelected } : {})
             });
           } catch (error) {
-            let message =
-              "Failed to load workspace.";
+            if (axios.isAxiosError(error) && error.response?.status === 401) {
+              throw error; // Let global interceptor handle it
+            }
 
-            if (
-              axios.isAxiosError(
-                error,
-              )
-            ) {
-              message =
-                error.response?.data
-                  ?.message ??
-                message;
+            let message = "Failed to load workspace.";
+
+            if (axios.isAxiosError(error)) {
+              message = error.response?.data?.message ?? message;
             }
 
             set({
@@ -135,80 +164,59 @@ export const useWorkspaceStore =
           }
         },
 
-      openFile: async (
-        filePath,
-      ) => {
-        const projectId =
-          get().projectId;
+      openFile: async (filePath) => {
+        const currentToken = ++globalOpenFileToken;
+        const projectId = get().projectId;
+        if (!projectId) return;
 
-        if (!projectId) {
-          return;
-        }
-
-        const cached =
-          get().openedFiles[
-            filePath
-          ];
-
+        const cached = get().openedFiles[filePath];
         if (cached) {
-          set({
-            selectedFile:
-              filePath,
-          });
-
+          if (currentToken === globalOpenFileToken) {
+            set({ selectedFile: filePath });
+          }
           return;
         }
 
         try {
-          set({
-            openingFile: true,
-            error: null,
-          });
-
-          const file =
-            await getWorkspaceFile(
-              projectId,
-              filePath,
-            );
-
-          const openedFile: OpenedFile =
-            {
-              path: file.path,
-              content:
-                file.content,
-              savedContent:
-                file.content,
-            };
-
-          set((state) => ({
-            openedFiles: {
-              ...state.openedFiles,
-              [filePath]:
-                openedFile,
-            },
-            selectedFile:
-              filePath,
-            openingFile: false,
-          }));
-        } catch (error) {
-          let message =
-            "Failed to open file.";
-
-          if (
-            axios.isAxiosError(
-              error,
-            )
-          ) {
-            message =
-              error.response?.data
-                ?.message ??
-              message;
+          if (currentToken === globalOpenFileToken) {
+            set({ openingFile: true, error: null });
           }
 
-          set({
-            error: message,
-            openingFile: false,
+          const file = await getWorkspaceFile(projectId, filePath);
+
+          const openedFile: OpenedFile = {
+            path: file.path,
+            content: file.content,
+            savedContent: file.content,
+          };
+
+          set((state) => {
+            const updates: Partial<WorkspaceStore> = {
+              openedFiles: {
+                ...state.openedFiles,
+                [filePath]: openedFile,
+              },
+            };
+            
+            if (currentToken === globalOpenFileToken) {
+              updates.selectedFile = filePath;
+              updates.openingFile = false;
+            }
+            
+            return updates;
           });
+        } catch (error) {
+          if (axios.isAxiosError(error) && error.response?.status === 401) {
+            throw error;
+          }
+
+          if (currentToken === globalOpenFileToken) {
+            let message = "Failed to open file.";
+            if (axios.isAxiosError(error)) {
+              message = error.response?.data?.message ?? message;
+            }
+            set({ error: message, openingFile: false });
+          }
         }
       },
 
@@ -290,6 +298,10 @@ export const useWorkspaceStore =
             set({ saveSuccess: false });
           }, 2000);
         } catch (error) {
+          if (axios.isAxiosError(error) && error.response?.status === 401) {
+            throw error;
+          }
+
           let message =
             "Failed to save file.";
 
@@ -364,6 +376,64 @@ export const useWorkspaceStore =
           error: null,
           saveError: null,
           saveSuccess: false,
+        });
+      },
+
+      clearOpenedFiles: async () => {
+        const projectId = get().projectId;
+        if (!projectId) return;
+
+        const currentOpenedFiles = get().openedFiles;
+        const filePaths = Object.keys(currentOpenedFiles);
+        if (filePaths.length === 0) return;
+
+        // Fetch latest content for all currently opened files concurrently
+        const results = await Promise.allSettled(
+          filePaths.map(path => getWorkspaceFile(projectId, path))
+        );
+
+        const newOpenedFiles: Record<string, OpenedFile> = {};
+        
+        results.forEach((result) => {
+          if (result.status === 'fulfilled') {
+            const file = result.value;
+            newOpenedFiles[file.path] = {
+              path: file.path,
+              content: file.content,
+              savedContent: file.content,
+            };
+          }
+        });
+
+        set((state) => {
+          let newSelectedFile = state.selectedFile;
+          // If the selected file was deleted (not in newOpenedFiles), pick another
+          if (newSelectedFile && !newOpenedFiles[newSelectedFile]) {
+            const remainingPaths = Object.keys(newOpenedFiles);
+            newSelectedFile = remainingPaths.length > 0 ? remainingPaths[0] : null;
+          }
+
+          return {
+            openedFiles: newOpenedFiles,
+            selectedFile: newSelectedFile,
+          };
+        });
+      },
+
+      closeFile: (filePath) => {
+        const state = get();
+        const newOpenedFiles = { ...state.openedFiles };
+        delete newOpenedFiles[filePath];
+
+        let newSelectedFile = state.selectedFile;
+        if (state.selectedFile === filePath) {
+          const remainingPaths = Object.keys(newOpenedFiles);
+          newSelectedFile = remainingPaths.length > 0 ? remainingPaths[0] : null;
+        }
+
+        set({
+          openedFiles: newOpenedFiles,
+          selectedFile: newSelectedFile,
         });
       },
     }),

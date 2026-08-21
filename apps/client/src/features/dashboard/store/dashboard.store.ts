@@ -19,6 +19,10 @@ interface DashboardState {
   deleteProject: (
     projectId: string,
   ) => Promise<void>;
+  exportProject: (
+    projectId: string,
+    projectName: string,
+  ) => Promise<void>;
 
   clearError: () => void;
 }
@@ -31,10 +35,12 @@ export const useDashboardStore =
     error: null,
 
     fetchProjects: async () => {
-      set({
-        loading: true,
-        error: null,
-      });
+      if (get().projects.length === 0) {
+        set({
+          loading: true,
+          error: null,
+        });
+      }
 
       try {
         const projects =
@@ -52,8 +58,6 @@ export const useDashboardStore =
               ? error.message
               : "Failed to fetch projects.",
         });
-
-        throw error;
       }
     },
 
@@ -64,7 +68,7 @@ export const useDashboardStore =
       });
 
       try {
-        let project =
+        const project =
           await dashboardService.createProject(
             data,
           );
@@ -76,14 +80,21 @@ export const useDashboardStore =
           ],
         });
 
-        // Trigger generation
-        project = await dashboardService.generateProject(project.id);
+        // Trigger generation but don't await the final project, just wait for the 202 accepted
+        await dashboardService.generateProject(project.id);
         
-        // Update project state with generation status
+        // Optimistically update the project state to start polling and trigger UI
         set({
-          projects: get().projects.map(p => p.id === project.id ? project : p),
+          projects: get().projects.map(p => 
+            p.id === project.id 
+              ? { ...p, status: "generating", pipelineStage: "Planning..." } 
+              : p
+          ),
         });
-
+        
+        // Wait 2.35 seconds to simulate creation time as requested by user
+        await new Promise(r => setTimeout(r, 2350));
+        
         set({
           loading: false,
         });
@@ -101,25 +112,49 @@ export const useDashboardStore =
     },
 
     deleteProject: async (projectId) => {
-      try {
-        await dashboardService.deleteProject(
-          projectId,
-        );
+      const currentProjects = get().projects;
+      const projectToDelete = currentProjects.find((p) => p.id === projectId);
+      
+      // Optimistic Update
+      set({
+        projects: currentProjects.filter((p) => p.id !== projectId),
+      });
 
+      try {
+        await dashboardService.deleteProject(projectId);
+      } catch (error) {
+        // Rollback
+        if (projectToDelete) {
+          set({ projects: [...get().projects, projectToDelete] });
+        }
+        
         set({
-          projects: get().projects.filter(
-            (project) =>
-              project.id !== projectId,
-          ),
+          error: error instanceof Error ? error.message : "Failed to delete project.",
         });
+
+        throw error;
+      }
+    },
+
+    exportProject: async (projectId: string, projectName: string) => {
+      try {
+        const blob = await dashboardService.exportProject(projectId);
+        const url = window.URL.createObjectURL(new Blob([blob]));
+        const link = document.createElement("a");
+        link.href = url;
+        const safeFilename = projectName.replace(/[^a-z0-9]/gi, "_").toLowerCase() || "project";
+        link.setAttribute("download", `${safeFilename}-export.zip`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
       } catch (error) {
         set({
           error:
             error instanceof Error
               ? error.message
-              : "Failed to delete project.",
+              : "Failed to export project.",
         });
-
         throw error;
       }
     },

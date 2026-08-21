@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import AppLayout from "@/components/layout/AppLayout";
@@ -10,6 +10,7 @@ import CodeEditor from "@/features/builder/editor/CodeEditor";
 import { useBuilderStore } from "@/features/builder/store/builder.store";
 import { useWorkspaceStore } from "@/features/builder/store/workspace.store";
 import { deleteProject } from "@/features/builder/services/builder.service";
+import axios from "axios";
 
 const BuilderPage = () => {
   const { projectId } = useParams();
@@ -29,6 +30,8 @@ const BuilderPage = () => {
     setProject,
     loadWorkspaceTree,
   } = useWorkspaceStore();
+
+  const pollingRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!projectId) {
@@ -55,6 +58,64 @@ const BuilderPage = () => {
     setProject,
     loadWorkspaceTree,
   ]);
+
+  useEffect(() => {
+    if (!projectId) return;
+
+    const checkPolling = async () => {
+      const state = useBuilderStore.getState();
+      const status = state.currentProject?.status;
+      
+      if (status === "ready" || status === "failed") {
+        if (pollingRef.current) {
+          clearInterval(pollingRef.current);
+          pollingRef.current = null;
+        }
+        return;
+      }
+
+      if (
+        status && 
+        ["generating", "building", "repairing", "refining"].includes(status)
+      ) {
+        if (!pollingRef.current) {
+          pollingRef.current = window.setInterval(async () => {
+            try {
+              await loadProject(projectId, true);
+              const newState = useBuilderStore.getState();
+              const newStatus = newState.currentProject?.status;
+              const newStage = newState.currentProject?.pipelineStage;
+              
+              const isDefinitivelyDone = newStage === "Ready" || newStage === "Failed" || newStage?.startsWith("Failed");
+
+              if (newStatus === "pending_changes" || ((newStatus === "ready" || newStatus === "failed") && isDefinitivelyDone)) {
+                if (pollingRef.current) {
+                  clearInterval(pollingRef.current);
+                  pollingRef.current = null;
+                }
+              }
+            } catch (err) {
+              if (axios.isAxiosError(err) && err.response?.status === 401) {
+                if (pollingRef.current) {
+                  clearInterval(pollingRef.current);
+                  pollingRef.current = null;
+                }
+              }
+            }
+          }, 2000);
+        }
+      }
+    };
+
+    void checkPolling();
+
+    return () => {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+        pollingRef.current = null;
+      }
+    };
+  }, [projectId, currentProject?.status, loadProject]);
 
   const handleStartRuntime = async () => {
     if (!projectId || !currentProject) {

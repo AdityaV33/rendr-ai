@@ -9,6 +9,9 @@ import type { GenerationGraph } from "./graph/graph.js";
 import type { GenerationState } from "./graph/state.js";
 import { ModelSchedulerService } from "./scheduler/index.js";
 import { devServerManager } from "../runtime/dev-server.manager.js";
+import { RefinementService } from "./refinement/refinement.service.js";
+import { RepairEngineService } from "./repair/repair-engine.service.js";
+import type { Project } from "../projects/project.model.js";
 
 /**
  * AiService is the top-level orchestrator for all AI operations.
@@ -17,11 +20,22 @@ import { devServerManager } from "../runtime/dev-server.manager.js";
 export class AiService {
   private readonly gemini: GeminiService;
   private readonly graph: GenerationGraph;
+  private _refinementService?: RefinementService;
 
   constructor() {
     const scheduler = new ModelSchedulerService();
     this.gemini = new GeminiService(scheduler);
     this.graph = createGenerationGraph(this.gemini);
+  }
+
+  private get refinementService(): RefinementService {
+    if (!this._refinementService) {
+      this._refinementService = new RefinementService(
+        this.gemini,
+        new RepairEngineService(this.gemini)
+      );
+    }
+    return this._refinementService;
   }
 
   async generate(data: { prompt?: string, projectId?: string, onEvent?: (event: import("./graph/types.js").GraphEvent) => void }): Promise<{ projectPlan: ProjectPlan; architecturePlan: ArchitecturePlan; generatedProject: GeneratedProject; metrics: unknown }> {
@@ -112,8 +126,8 @@ GateRunner:             ${(finalState.metrics.validationMs / 1000).toFixed(1)} s
     } as unknown as { projectPlan: ProjectPlan; architecturePlan: ArchitecturePlan; generatedProject: GeneratedProject; metrics: any };
   }
 
-  async refine(_data: unknown) {
-    throw new Error("Method not implemented.");
+  async refine(data: { project: import("mongoose").HydratedDocument<Project>, prompt: string, onEvent?: (event: import("./graph/types.js").GraphEvent) => void }) {
+    return this.refinementService.refine(data.project, data.prompt, data.onEvent);
   }
 }
 

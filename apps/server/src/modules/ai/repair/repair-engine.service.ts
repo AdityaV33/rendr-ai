@@ -23,8 +23,8 @@ export class RepairEngineService {
     rawErrorOutput: string,
     diagnostics: ParsedDiagnostic[],
     escalationMessage?: string
-  ): Promise<void> {
-    if (!state.generatedFiles || !state.architecture) return;
+  ): Promise<{ path: string, content: string }[]> {
+    if (!state.generatedFiles || !state.architecture) return [];
 
     const files = state.generatedFiles.files;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -39,38 +39,50 @@ export class RepairEngineService {
     // Extract unique affected file paths
     const affectedFilePaths = Array.from(new Set(diagnostics.map(d => d.file).filter(Boolean))) as string[];
     
-    // --- NEW BOUNDED REPAIR CONTEXT BUDGET ---
+    // --- BOUNDED REPAIR CONTEXT BUDGET ---
+    const MAX_CONTEXT_FILES = 8;
     const contextFiles = new Set<string>();
     
-    // 1. Broken files
+    // 1. Broken files directly mentioned in diagnostics
     for (const path of affectedFilePaths) {
-      if (contextFiles.size < 4) contextFiles.add(path);
+      if (contextFiles.size < MAX_CONTEXT_FILES) contextFiles.add(path);
     }
     
-    // 2. Parent Importer & Imported Interfaces
+    // 2. Imported dependencies & interfaces from broken files (highest priority for type mismatch repairs)
     for (const brokenPath of affectedFilePaths) {
       const brokenFile = files.find(f => f.path === brokenPath);
       if (!brokenFile) continue;
       
-      const basename = brokenPath.split('/').pop()!.replace(/\.[^.]+$/, '');
-      
-      // Parent importer
-      for (const f of files) {
-        if (contextFiles.size >= 4) break;
-        if (f.content.includes(`/${basename}`) || f.content.includes(`./${basename}`)) {
-          contextFiles.add(f.path);
-        }
-      }
-      
-      // Imported interfaces
       const importMatches = [...brokenFile.content.matchAll(/import\s+.*?\s+from\s+['"]([^'"]+)['"]/g)];
       for (const match of importMatches) {
-        if (contextFiles.size >= 4) break;
+        if (contextFiles.size >= MAX_CONTEXT_FILES) break;
         const importPath = match[1];
         if (importPath.startsWith('.')) {
           const importBasename = importPath.split('/').pop()!;
           const importedFile = files.find(f => f.path.includes(`/${importBasename}.`) || f.path.includes(`/${importBasename}`) || f.path === importBasename);
           if (importedFile) contextFiles.add(importedFile.path);
+        }
+      }
+    }
+
+    // 3. Files matching diagnostic symbols (e.g. KPICard, useNotifications)
+    for (const diag of diagnostics) {
+      if (contextFiles.size >= MAX_CONTEXT_FILES) break;
+      const symbols = diag.message.match(/[A-Z][a-zA-Z0-9]+/g) || [];
+      for (const sym of symbols) {
+        const matchingFile = files.find(f => f.path.includes(`/${sym}.`) || f.content.includes(`interface ${sym}`) || f.content.includes(`type ${sym}`));
+        if (matchingFile) contextFiles.add(matchingFile.path);
+      }
+    }
+    
+    // 4. Parent Importers
+    for (const brokenPath of affectedFilePaths) {
+      if (contextFiles.size >= MAX_CONTEXT_FILES) break;
+      const basename = brokenPath.split('/').pop()!.replace(/\.[^.]+$/, '');
+      for (const f of files) {
+        if (contextFiles.size >= MAX_CONTEXT_FILES) break;
+        if (f.content.includes(`/${basename}`) || f.content.includes(`./${basename}`)) {
+          contextFiles.add(f.path);
         }
       }
     }
@@ -101,6 +113,8 @@ export class RepairEngineService {
 
     let filesUpdated = 0;
     
+    const repairedFiles: { path: string, content: string }[] = [];
+    
     if (repairResult && repairResult.files) {
       for (const file of repairResult.files) {
         const filePath = file.path;
@@ -115,6 +129,7 @@ export class RepairEngineService {
             content: newContent
           });
         }
+        repairedFiles.push({ path: filePath, content: newContent });
         console.log(`[RepairEngine] Repaired file: ${filePath}`);
         filesUpdated++;
       }
@@ -123,5 +138,7 @@ export class RepairEngineService {
     if (filesUpdated === 0) {
       console.warn(`[RepairEngine] Warning: LLM returned no valid file blocks for ${gateName} repair.`);
     }
+    
+    return repairedFiles;
   }
 }

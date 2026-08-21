@@ -52,6 +52,27 @@ export class DiagnosticParser {
           code: "NODE_RESOLVE",
           message: `Cannot find module: ${nodeResolveMatch[1]}`
         });
+        continue;
+      }
+
+      // Parse Vite plugin / transform errors (e.g. Tailwind v4 unknown utility class)
+      const vitePluginMatch = line.match(/\[plugin:([^\]]+)\]\s*(.*)/i) || line.match(/\[vite\]\s*(Internal server error:.*)/i);
+      if (vitePluginMatch) {
+        let errorFile = "src/index.css";
+        for (let j = i; j < Math.min(lines.length, i + 10); j++) {
+          const fileMatch = lines[j].match(/File:\s*([^\s]+)/i);
+          if (fileMatch) {
+            errorFile = fileMatch[1].replace(/.*[\\/]src[\\/]/, 'src/');
+            break;
+          }
+        }
+        diagnostics.push({
+          tool: "vite",
+          category: "localized_logic",
+          code: "VITE_PLUGIN_ERROR",
+          file: errorFile,
+          message: line
+        });
       }
     }
 

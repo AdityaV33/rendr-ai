@@ -98,10 +98,11 @@ export async function startRuntime(
 
   await prepareWorkspace(projectId, project.framework);
 
-  if (project.generatedProject?.files) {
+  const filesToWrite = project.pendingProject?.files || project.generatedProject?.files;
+  if (filesToWrite) {
     await workspaceFileService.writeGeneratedProject(
       projectId,
-      project.generatedProject.files,
+      filesToWrite,
     );
   }
   
