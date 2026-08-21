@@ -19,6 +19,7 @@ import type { GraphEvent } from "../graph/types.js";
 import type { GenerationState } from "../graph/state.js";
 import { generateFileSummary } from "../utils/file-summary.utils.js";
 import { pipelineRunContext } from "../utils/run-context.js";
+import { env } from "../../../config/env.js";
 
 const PLANNER_SCHEMA = zodToGeminiSchema(refinementPlannerSchema);
 
@@ -49,7 +50,8 @@ export class RefinementService {
   async refine(
     project: HydratedDocument<Project>,
     prompt: string,
-    onEvent?: (event: GraphEvent) => void
+    onEvent?: (event: GraphEvent) => void,
+    abortSignal?: AbortSignal
   ) {
     const emit = (type: string, durationMs?: number) => {
       if (onEvent) {
@@ -65,15 +67,21 @@ export class RefinementService {
 
     const startTotal = performance.now();
     
-    return pipelineRunContext.run({ blacklistedModels: new Set<string>(), groqExcludedModels: new Set<string>() }, async () => {
+    return pipelineRunContext.run({
+            blacklistedModels: new Set<string>(),
+            groqExcludedModels: new Set<string>(),
+            groqModelCooldowns: new Map<string, number>(),
+            abortSignal
+          }, async () => {
 
     // 1. Refinement Planner
     emit("planner_started");
     const plannerStart = performance.now();
     // Extract current file tree
     let fileTree = "";
-    if (project.generatedProject?.files) {
-      fileTree = project.generatedProject.files.map(f => generateFileSummary(f.path, f.content)).join("\n\n");
+    const contextFiles = project.pendingProject?.files || project.generatedProject?.files;
+    if (contextFiles) {
+      fileTree = contextFiles.map(f => generateFileSummary(f.path, f.content)).join("\n\n");
     } else if (project.files?.length) {
       fileTree = project.files.join("\n");
     } else {
@@ -178,7 +186,7 @@ ${fileTree}
          const rawOutput = await this.gemini.generateText(
            prompt,
            REFINEMENT_GENERATOR_SYSTEM_PROMPT,
-           { timeoutMs: 30000, taskName: `Refine: ${targetFile.path}` }
+           { timeoutMs: env.GEMINI_GENERATOR_TIMEOUT_MS, taskName: `Refine: ${targetFile.path}` }
          );
          return { path: targetFile.path, content: this.cleanRawOutput(rawOutput) };
        } catch {
@@ -231,13 +239,15 @@ ${fileTree}
         
         // 1. Run tsc -b explicitly for typechecking
         const tscStart = performance.now();
-        const tscResult = await runProcess(pmCmd, ["exec", "tsc", "-b"], { cwd: workspacePath });
+        const runContext = pipelineRunContext.getStore();
+        const tscResult = await runProcess(pmCmd, ["exec", "tsc", "-b"], { cwd: workspacePath, signal: runContext?.abortSignal });
         tscTime += performance.now() - tscStart;
         
         return tscResult;
       } else {
         const [cmd, ...args] = cmdToRun.split(" ");
-        return runProcess(cmd, args, { cwd: workspacePath });
+        const runContext = pipelineRunContext.getStore();
+        return runProcess(cmd, args, { cwd: workspacePath, signal: runContext?.abortSignal });
       }
     };
     buildResult = await runBuild();

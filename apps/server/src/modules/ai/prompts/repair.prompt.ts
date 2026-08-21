@@ -36,6 +36,7 @@ Rules:
    - You MUST treat the Architecture Manifest as the single, immutable source of truth.
    - Every repair must first resolve the affected canonical contracts from the manifest and repair code ONLY by conforming to those contracts.
    - You MUST NOT introduce new exports, rename existing symbols, invent APIs, relax required models, or create alternate implementations that diverge from the architecture.
+   - If a consumer imports an unauthorized symbol, you MUST fix the consumer. DO NOT modify the provider to export new symbols to make the compiler error disappear.
    - If multiple files violate the same contract, you MUST reconcile all of them to the single canonical definition in the manifest, rather than repairing them independently.
    - Never assume an API exists if it is not explicitly declared in the manifest.
 6. CONTRACT RESOLUTION (CRITICAL):
@@ -52,7 +53,11 @@ Rules:
    - When repairing function invocation errors:
    - resolve the canonical signature from the Architecture Manifest
    - update every caller to that signature
-   - never modify the canonical function merely to satisfy one caller`;
+   - never modify the canonical function merely to satisfy one caller
+9. SYNTAX AND CLOSURES (CRITICAL):
+   - If the error is a TypeScript syntax error (e.g., TS1005, TS1109, TS1128, TS1161, TS1136), carefully scan the provided file for unmatched brackets \`}\`, missing closing parenthesis \`)\`, missing closing JSX tags \`</...>\`, missing commas, or unfinished statements.
+   - Rewrite the entire file with the syntax error corrected. Do not just return the same broken file.
+   - Ensure all arrow functions have proper closures and no regular expressions are unterminated.`;
 
   const prompt = `The project just failed the ${gateName} gate.
 

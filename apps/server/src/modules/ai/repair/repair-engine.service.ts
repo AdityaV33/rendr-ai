@@ -5,6 +5,7 @@ import { env } from "../../../config/env.js";
 import { z } from "zod";
 import type { ParsedDiagnostic, RepairContext } from "./repair.types.js";
 import { zodToGeminiSchema } from "../utils/schema.utils.js";
+import { ContractGate } from "../generator/contract.gate.js";
 
 const repairResponseSchema = z.object({
   files: z.array(z.object({
@@ -133,6 +134,20 @@ export class RepairEngineService {
       for (const file of repairResult.files) {
         const filePath = file.path;
         const newContent = file.content;
+        
+        // ContractGate Verification
+        const violations = ContractGate.verify(
+          newContent,
+          allContracts,
+          filePath,
+          state.architecture.stack.frontendFramework,
+          true // strictExports flag for repair
+        );
+
+        if (violations.length > 0) {
+          console.error(`[RepairEngine] ContractGate rejected repair for ${filePath}:\n- ${violations.join('\n- ')}`);
+          throw new Error(`Repair for ${filePath} was rejected by Contract Gate: ${violations.join(', ')}`);
+        }
         
         const existingFileIndex = files.findIndex(f => f.path === filePath);
         if (existingFileIndex >= 0) {

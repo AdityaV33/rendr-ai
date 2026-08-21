@@ -4,6 +4,7 @@ import {
   runProcess,
   type ProcessResult,
 } from "./process.service.js";
+import { pipelineRunContext } from "../ai/utils/run-context.js";
 import {
   getWorkspacePath,
   workspaceExists,
@@ -46,16 +47,21 @@ export async function installDependenciesInWorkspace(
 
     console.log(`\nInstalling Dependencies in ${workspacePath}\n\nExecuting:\n${command}\n`);
 
+    const runContext = pipelineRunContext.getStore();
+
     const result = await runProcess(
       cmd,
       args,
       {
         cwd: workspacePath,
+        signal: runContext?.abortSignal
       },
     );
 
     if (result.success) {
       await fs.writeFile(hashPath, currentHash);
+    } else {
+      console.error(`[Runtime] Dependency installation failed: ${result.stderr || result.stdout}`);
     }
 
     return result;

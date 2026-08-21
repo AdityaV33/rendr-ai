@@ -8,6 +8,7 @@ import { NotFoundError, ConflictError } from "../lib/http-error.js";
 import * as workspaceService from "../runtime/workspace.service.js";
 import * as runtimeManagerService from "../runtime/runtime-manager.service.js";
 import * as workspaceFileService from "../runtime/workspace-file.service.js";
+import { pipelineRunContext } from "../ai/utils/run-context.js";
 
 
 export async function createProject(
@@ -146,10 +147,22 @@ export async function generateProject(project: HydratedDocument<Project>) {
 
   console.log("\n===================================");
   console.log("Parallel Execution Started");
-  console.log("===================================");
+  // Absolute safety timeout to prevent hanging generations
+  const abortController = new AbortController();
+  const masterDeadline = setTimeout(() => {
+    abortController.abort(new Error("Master pipeline deadline exceeded (8 minutes)"));
+  }, 8 * 60 * 1000);
 
   try {
-    const { projectPlan, architecturePlan, generatedProject, metrics } = await aiService.generate({ 
+    const { projectPlan, architecturePlan, generatedProject, metrics } = await pipelineRunContext.run(
+      {
+        blacklistedModels: new Set<string>(),
+        groqExcludedModels: new Set<string>(),
+        groqModelCooldowns: new Map<string, number>(),
+        abortSignal: abortController.signal
+      },
+      async () => {
+        return aiService.generate({ 
       prompt: project.prompt,
       projectId: projectId,
       onEvent: (event) => {
@@ -212,6 +225,7 @@ export async function generateProject(project: HydratedDocument<Project>) {
         }
       }
     });
+  });
 
     const aiTime = performance.now() - startOverall;
 
@@ -305,6 +319,8 @@ export async function generateProject(project: HydratedDocument<Project>) {
     }
 
     throw error;
+  } finally {
+    clearTimeout(masterDeadline);
   }
 }
 

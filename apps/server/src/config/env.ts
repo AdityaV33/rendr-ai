@@ -40,7 +40,7 @@ const envSchema = z.object({
 
   GEMINI_TIMEOUT_MS: z.coerce.number().positive().default(120000), // 2 minutes
 
-  GEMINI_GENERATOR_TIMEOUT_MS: z.coerce.number().default(30000),
+  GEMINI_GENERATOR_TIMEOUT_MS: z.coerce.number().default(60000),
 
   GEMINI_REPAIR_TIMEOUT_MS: z.coerce.number().default(30000),
 
@@ -65,6 +65,10 @@ const envSchema = z.object({
   GENERATOR_VERSION: z.enum(["v1", "v2"]).default("v1"),
 
   MAX_PARALLEL_GENERATIONS: z.coerce.number().min(1).default(4),
+
+  GENERATOR_BATCH_MAX_FILES: z.coerce.number().min(1).default(4),
+  GENERATOR_BATCH_MAX_OUTPUT_TOKENS: z.coerce.number().min(100).default(4000),
+  GENERATOR_BATCH_CONCURRENCY: z.coerce.number().min(1).default(2),
 });
 
 export const env = envSchema.parse(process.env);

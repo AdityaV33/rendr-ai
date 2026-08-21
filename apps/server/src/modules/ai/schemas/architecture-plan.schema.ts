@@ -1,95 +1,96 @@
 import { z } from "zod";
+import { validateArchitectureIntegrity } from "../validation/architecture-integrity.js";
 
 /**
  * ArchitecturePlan Schema
- *
- * Represents the output of the Architect — the engineering and structural decisions.
- * The Architect thinks like a Staff Software Engineer. It receives the WHAT
- * (ProjectPlan) and determines the HOW.
- *
- * This contract contains NO generated source code or implementation details
- * (such as component props, state, or hooks). It only contains the blueprints,
- * technology choices, file structures, tooling, and dependencies that the 
- * Generator will use to produce the final project files.
  */
 export const architecturePlanSchema = z.object({
-  /** Core technology stack decisions */
   stack: z.object({
-    language: z.string().describe("e.g., 'TypeScript', 'JavaScript'"),
-    frontendFramework: z.enum(["react-vite", "vanilla-js"]).describe("Must match the ProjectPlan framework selection."),
-    buildTool: z.string().describe("e.g., 'Vite', 'Next.js', 'Webpack'"),
-    packageManager: z.string().describe("e.g., 'npm', 'yarn', 'pnpm'"),
+    language: z.string(),
+    frontendFramework: z.enum(["react-vite", "vanilla-js"]),
+    buildTool: z.string(),
+    packageManager: z.string(),
   }),
-
-  /** High-level architectural strategies */
-  strategies: z.array(z.string()).describe("List of styling, state, or routing choices. e.g., ['Tailwind CSS', 'React Router', 'Zustand']"),
-
-  /** Specific NPM dependencies required for the project */
+  strategies: z.array(z.string()).describe("Styling/state/routing choices (e.g. ['Tailwind CSS', 'Zustand'])."),
   dependencies: z.array(
     z.object({
       name: z.string(),
-      version: z.string().optional().describe("Can be 'latest' or a specific version like '^18.2.0'"),
+      version: z.string().optional(),
       isDev: z.boolean().default(false),
-      reason: z.string().describe("Why this dependency is needed for the architecture"),
+      reason: z.string(),
     })
   ),
-
-  /** The exact physical file and directory structure to be generated */
   fileStructure: z.array(
     z.object({
-      path: z.string().describe("Relative path from project root, e.g., 'src/components/Button.tsx'"),
-      purpose: z.string().describe("High-level instructions for the Generator on what this file should contain. NO props or state details."),
+      path: z.string().describe("Relative path (e.g., 'src/components/Button.tsx')"),
+      purpose: z.string().describe("High-level purpose. NO props or state details."),
       type: z.enum(["file", "directory"]),
-      allowedImports: z.array(z.string()).optional().describe("Strict list of other generated files (by name) or npm dependencies this file is allowed to import. e.g., ['CalculatorContext', 'react']"),
+      allowedImports: z.array(z.string()).optional().describe("Strict list of local files/npm dependencies allowed to be imported."),
     })
   ),
-
-  /** The single source of truth for component APIs. Must be generated for EVERY component in the file structure (excluding root/pages). */
   componentContracts: z.array(
     z.object({
-      name: z.string().describe("The exact name of the component, e.g. 'MessageCard'"),
-      importPath: z.string().describe("The relative import path from src root, e.g. './components/Display' or './context/CalculatorContext'"),
+      name: z.string(),
+      importPath: z.string().describe("Relative import path (e.g. './components/Display')"),
       exportType: z.enum(["default", "named"]),
-      exports: z.array(z.string()).describe("The exact exported symbol names this file MUST export. e.g. for a Context: ['CalculatorProvider', 'useCalculator']. For a component: ['Display']. Every consumer will import these exact names."),
-      publicAPI: z.array(z.string()).optional().describe("For hooks/contexts: the exact property names returned. e.g. ['result', 'history', 'calculate', 'clear']. Omit for simple components."),
+      exports: z.array(z.string()).describe("Exported symbol names (e.g. ['Display'])."),
+      publicAPI: z.array(z.string()).optional().describe("Returned property names for hooks/contexts."),
       props: z.array(
         z.object({
           name: z.string(),
-          type: z.enum([
-            "string",
-            "number",
-            "boolean",
-            "() => void",
-            "ReactNode",
-            "string[]",
-            "number[]",
-            "boolean[]"
-          ]).describe("Strictly constrained type to prevent API hallucination."),
+          type: z.string(),
           required: z.boolean(),
         })
       )
     })
-  ).describe("Required array containing the API contract for EVERY component you create."),
-
-  /** Behavioral contracts defining interactions and derived state */
+  ),
   behavioralContracts: z.array(
     z.object({
-      file: z.string().describe("Must exactly match a fileStructure path."),
-      responsibilities: z.array(z.string()).describe(
-        "Explicit logical responsibilities this file owns. Use imperative language like 'Own calculator state', 'Evaluate expressions'."
-      ),
+      file: z.string(),
+      responsibilities: z.array(z.string()),
       behaviorRules: z.array(
         z.object({
-          trigger: z.string().describe("e.g. 'Click number', 'Component mounts'"),
-          preconditions: z.array(z.string()).default([]).describe("e.g. ['Expression is non-empty']"),
-          action: z.string().describe("e.g. 'Append digit to currentInput', 'Fetch user data'"),
-          assertions: z.array(z.string()).default([]).describe("e.g. ['Display shows result', 'History length increases by 1']"),
+          trigger: z.string(),
+          preconditions: z.array(z.string()).default([]),
+          action: z.string(),
+          assertions: z.array(z.string()).default([]),
         })
-      ).describe("Strict mapping of interactions to expected behaviors. Machine-oriented and concise."),
-      acceptanceCriteria: z.array(z.string()).describe("Defines exactly what 'finished' looks like. e.g. ['2 + 3 = 5', 'History is updated']"),
+      ),
+      acceptanceCriteria: z.array(z.string()),
     })
-  ).describe("Required array containing the behavioral contract for EVERY interactive component or page."),
-
-  /** Extensibility for future phases */
+  ),
   metadata: z.record(z.string(), z.unknown()).optional(),
+}).superRefine((plan, ctx) => {
+  try {
+    validateArchitectureIntegrity(plan as any);
+  } catch (error: any) {
+    if (error.name === "ArchitectureValidationError") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `ARCHITECTURE INTEGRITY ERROR: ${error.message}\n\nYou MUST fix this in your next response.`,
+      });
+    } else {
+      throw error;
+    }
+  }
+});
+
+/**
+ * ArchitecturePatch Schema used for Targeted LLM Retry
+ */
+export const architecturePatchSchema = z.object({
+  addedFiles: z.array(
+    z.object({
+      path: z.string().describe("Relative path (e.g., 'src/components/Button.tsx')"),
+      purpose: z.string().describe("High-level purpose. NO props or state details."),
+      type: z.enum(["file", "directory"]),
+      allowedImports: z.array(z.string()).optional().describe("Strict list of local files/npm dependencies allowed to be imported."),
+    })
+  ).default([]),
+  modifiedComponentContracts: z.array(
+    z.object({
+      name: z.string(),
+      importPath: z.string().describe("Relative import path (e.g. './components/Display')")
+    })
+  ).default([])
 });

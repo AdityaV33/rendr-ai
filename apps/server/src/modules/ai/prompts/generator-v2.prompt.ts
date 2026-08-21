@@ -48,6 +48,14 @@ You MUST NOT invent:
   - change literal unions (e.g., using "Todo" when the model says "todo")
   - assume optional fields exist if they are not explicitly declared
   When calling imported APIs or passing props, you MUST strictly match the exact argument count, parameter types, and object shapes defined in the Architecture Manifest. If the required data is not part of the shared model, omit the feature rather than hallucinating new fields.
+  
+- **Syntax and Formatting (CRITICAL)**:
+  You MUST ensure all TypeScript/TSX syntax is complete and valid.
+  - Double-check all closing brackets \`}\`, closing parenthesis \`)\`, and closing JSX tags \`</...>\`.
+  - Do not leave unterminated regular expressions or missing property assignments.
+  - Ensure all arrow functions have proper closures.
+  - Pay extreme attention to TS syntax constraints to prevent compilation errors (e.g. TS1005, TS1109).
+
 - **SEMANTIC CONTRACTS (CRITICAL)**:
   The Architecture Manifest defines not only the names of data models and APIs, but also their semantic meaning.
   This applies equally to:
@@ -357,6 +365,95 @@ Output raw source code for this file.`;
   console.log(`Closed-world Manifest (Injected): ${manifestSize} chars`);
   console.log(`Framework Rules (Injected): ${frameworkRulesSize} chars`);
   console.log(`Total (System + User): ${GENERATOR_V2_SYSTEM_PROMPT.length + prompt.length} chars\n====================================\n`);
+
+  return { system: GENERATOR_V2_SYSTEM_PROMPT, prompt };
+}
+export function buildBatchPrompt(
+  files: ArchitecturePlan["fileStructure"],
+  projectPlan: ProjectPlan,
+  architecturePlan: ArchitecturePlan,
+  allContracts: Record<string, Omit<ComponentContract, "description">>
+): { system: string; prompt: string } {
+  const manifest = buildArchitectureManifest(architecturePlan, allContracts);
+
+  let prompt = `You are generating a BATCH of ${files.length} related files.
+
+Application Framework: ${architecturePlan.stack.frontendFramework}
+Strategies: ${architecturePlan.strategies.join(", ")}
+
+${manifest}
+
+The files you need to generate are:
+${files.map(f => `- ${f.path}`).join('\n')}
+
+`;
+
+  for (const file of files) {
+    const isRoot = file.path.includes("App.") || file.path.includes("main.");
+    
+    prompt += `\n==============================================\n`;
+    prompt += `FILE: ${file.path}\n`;
+    prompt += `==============================================\n`;
+    prompt += `Purpose:\n${file.purpose}\n`;
+
+    const parts = file.path.split('/');
+    const fileName = parts[parts.length - 1];
+    const name = fileName.replace(/\.[^/.]+$/, "");
+
+    if (fileName === "index.html") {
+      prompt += `
+Rules for index.html:
+- MUST include the base DOM structure and container elements required by the JavaScript code.
+- MUST import the main JavaScript entry point.
+`;
+    }
+
+    if (allContracts[name]) {
+      const c = allContracts[name];
+      const exportsList = c.exports && c.exports.length > 0
+        ? c.exports.join(", ")
+        : (c.exportType === "default" ? name : name);
+      prompt += `
+Contract:
+- Export Type: ${c.exportType}
+- Exports: ${exportsList}
+- Props: ${c.props.length > 0 ? c.props.map(p => p.name + (p.required ? "" : "?") + ": " + p.type).join(", ") : "None"}
+
+You MUST export exactly these symbols: ${exportsList}. Do not rename or add additional exports.
+`;
+    }
+
+    if (file.allowedImports && file.allowedImports.length > 0) {
+      prompt += `
+Allowed Imports:
+${file.allowedImports.join(", ")}
+You MUST NOT import any other files from this project unless listed here.
+`;
+    }
+
+    if (isRoot && (architecturePlan.strategies.some(s => s.toLowerCase().includes("router")) || projectPlan.pages?.length > 0)) {
+      const pages = projectPlan.pages || [];
+      if (pages.length > 0) {
+        prompt += `\nRoutes:\n`;
+        for (const page of pages) {
+          prompt += `- ${page.route} → ${page.name}\n`;
+        }
+      }
+    }
+
+    const behavioralContract = (architecturePlan.behavioralContracts || []).find(c => c.file === file.path);
+    if (behavioralContract) {
+      prompt = appendBehaviorContext(prompt, behavioralContract);
+    }
+  }
+
+  prompt = appendFrameworkRules(prompt, architecturePlan.stack.frontendFramework);
+
+  prompt += `
+RETURN FORMAT:
+You must return the requested files exactly as requested, strictly following their contracts and allowed imports.
+Output valid JSON matching the requested schema.
+`;
 
   return { system: GENERATOR_V2_SYSTEM_PROMPT, prompt };
 }

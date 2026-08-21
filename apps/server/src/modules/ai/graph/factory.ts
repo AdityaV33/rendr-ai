@@ -23,7 +23,7 @@ export function createGenerationGraph(geminiService: GeminiService): GenerationG
 
     // 2. Create AI pipeline services
     const plannerService = new PlannerService(groqSchedulerService);
-    const architectService = new ArchitectService(groqSchedulerService);
+    const architectService = new ArchitectService(geminiService);
     const generatorV2Service = new GeneratorV2Service(geminiService, templateEngine);
     const sanityGateService = new SanityGateService();
     const repairEngineService = new RepairEngineService(geminiService);

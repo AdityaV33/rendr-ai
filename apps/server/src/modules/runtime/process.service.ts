@@ -28,16 +28,35 @@ export function runProcess(
   options?: SpawnOptions,
 ): Promise<ProcessResult> {
   return new Promise((resolve, reject) => {
+    if (options?.signal?.aborted) {
+      return reject(options.signal.reason || new Error("Process aborted"));
+    }
+    const { signal, ...spawnOptions } = options || {};
+
     const child = spawn(
       command,
       args,
       {
-        ...options,
+        ...spawnOptions,
         // Enforce process-group policy on Unix for reliable termination, and shell only on Windows.
         shell: process.platform === "win32",
         detached: process.platform !== "win32",
       },
     );
+
+    managedProcesses.add(child);
+
+    const onAbort = () => {
+      stopProcess(child)
+        .catch(err => console.error(`[ProcessService] stopProcess failed during abort:`, err))
+        .finally(() => {
+          reject(signal?.reason || new Error("Process aborted"));
+        });
+    };
+
+    if (signal) {
+      signal.addEventListener("abort", onAbort);
+    }
 
     let stdout = "";
     let stderr = "";
@@ -56,9 +75,18 @@ export function runProcess(
       },
     );
 
-    child.on("error", reject);
+    child.on("error", (err) => {
+      if (signal) signal.removeEventListener("abort", onAbort);
+      managedProcesses.delete(child);
+      reject(err);
+    });
 
     child.on("close", (code) => {
+      if (signal) {
+        signal.removeEventListener("abort", onAbort);
+        if (signal.aborted) return; // Promise is already rejected by onAbort
+      }
+      managedProcesses.delete(child);
       resolve({
         success: code === 0,
         exitCode: code ?? -1,
