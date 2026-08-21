@@ -28,7 +28,7 @@ export class RepairEngineService {
     if (!state.generatedFiles || !state.architecture) return [];
 
     const files = state.generatedFiles.files;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const allContracts: Record<string, any> = {};
     
     if (state.architecture.componentContracts) {

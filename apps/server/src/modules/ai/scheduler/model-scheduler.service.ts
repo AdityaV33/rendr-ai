@@ -254,7 +254,7 @@ export class ModelSchedulerService {
         // Check if error contains a retry delay (e.g. "Please retry in 28.2s")
         let parsedCooldown = 30000; // Default to 30s
         if (error instanceof Error && error.message.includes("retry in ")) {
-           const match = error.message.match(/retry in ([\d\.]+)s/);
+           const match = error.message.match(/retry in ([\d.]+)s/);
            if (match && match[1]) {
              parsedCooldown = parseFloat(match[1]) * 1000;
            }

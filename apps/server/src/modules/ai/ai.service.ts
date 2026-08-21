@@ -125,7 +125,7 @@ GateRunner:             ${(finalState.metrics.validationMs / 1000).toFixed(1)} s
       architecturePlan: finalState.architecture, 
       generatedProject: finalState.generatedFiles,
       metrics: finalState.metrics
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
     } as unknown as { projectPlan: ProjectPlan; architecturePlan: ArchitecturePlan; generatedProject: GeneratedProject; metrics: any };
   }
 

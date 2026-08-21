@@ -94,11 +94,6 @@ export class ContractGate {
       return [];
     }
     
-    // Vanilla JS files use distinct logic, they typically don't import/export standard modules in RendrAI architecture 
-    // depending on the project plan, but let's stick to React/TSX where contracts matter most for now.
-    if (framework === "vanilla-js" || framework === "vanilla") {
-        return []; 
-    }
 
     const violations: string[] = [];
     const ast = this.parseCode(code, filePath);

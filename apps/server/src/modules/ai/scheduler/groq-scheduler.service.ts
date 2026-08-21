@@ -15,7 +15,7 @@ export class GroqSchedulerService {
 
   async generateStructured<T>(
     prompt: string,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     responseSchema: any,
     systemInstruction?: string,
     config?: { temperature?: number; timeoutMs?: number; taskName?: string }

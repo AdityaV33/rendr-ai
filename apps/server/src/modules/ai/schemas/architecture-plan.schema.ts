@@ -7,7 +7,7 @@ import { validateArchitectureIntegrity } from "../validation/architecture-integr
 export const architecturePlanSchema = z.object({
   stack: z.object({
     language: z.string(),
-    frontendFramework: z.enum(["react-vite", "vanilla-js"]),
+    frontendFramework: z.enum(["react-vite"]),
     buildTool: z.string(),
     packageManager: z.string(),
   }),

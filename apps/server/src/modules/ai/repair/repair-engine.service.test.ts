@@ -14,7 +14,7 @@ test('RepairEngineService - Structural Targeting Rules', async (t) => {
   
   const state: GenerationState = {
     prompt: '', 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     project: { id: 'test', userId: 'user', applicationType: 'test', title: 'Test', createdAt: new Date(), updatedAt: new Date() } as any,
     currentStep: 'planner', status: 'completed', errors: [], executionHistory: [], checkpoints: [], metrics: { plannerMs: 0, architectMs: 0, generatorMs: 0, validationMs: 0, repairMs: 0, totalMs: 0, architectRetries: 0 },
     architecture: { stack: { language: 'TypeScript', frontendFramework: 'react-vite', buildTool: 'vite', packageManager: 'npm' }, strategies: [], dependencies: [], fileStructure: [], componentContracts: [], behavioralContracts: [] },
@@ -33,10 +33,10 @@ test('RepairEngineService - Structural Targeting Rules', async (t) => {
   ];
 
   let capturedPrompt = '';
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   mockGemini.generateStructured = async <T>(prompt: string, schema: any, system: string): Promise<T> => {
     capturedPrompt = prompt + system;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     return { files: [] } as any;
   };
 

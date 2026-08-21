@@ -30,8 +30,7 @@ Rules:
 2. Provide the COMPLETE file content for any file you modify. Do not provide partial snippets.
 3. You are FORBIDDEN from modifying any file that was not provided in the "Editable Files" section. Only return modified files from the "Editable Files" list. Do not modify "Read-Only Context Files".
 4. STRICT FRAMEWORK BOUNDARY:
-   - If Framework is 'vanilla' or 'vanilla-js', NEVER output React, JSX, Hooks, or Providers. Provide plain HTML, CSS, and JS.
-   - If Framework is 'react-vite', NEVER provide vanilla DOM manipulation (e.g. document.getElementById) unless strictly necessary.
+   - NEVER provide vanilla DOM manipulation (e.g. document.getElementById) unless strictly necessary.
 5. ARCHITECTURE IMMUTABILITY (CRITICAL):
    - You MUST treat the Architecture Manifest as the single, immutable source of truth.
    - Every repair must first resolve the affected canonical contracts from the manifest and repair code ONLY by conforming to those contracts.

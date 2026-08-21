@@ -9,6 +9,8 @@
 
 **RendrAI is an autonomous AI application generation platform that transforms a natural-language prompt into a complete React frontend application. Unlike traditional single-prompt generators, RendrAI uses deterministic architectural contracts, dependency-aware generation, staged validation, automated repair, and an interactive builder workspace to reduce hallucinations and cross-file inconsistencies.**
 
+*Note: RendrAI is designed as a **local-only, Bring Your Own Key (BYOK)** development tool. Generated projects are executed entirely on your local machine. There is no cloud deployment infrastructure.*
+
 ## Why RendrAI?
 
 Most AI code generators rely on a single LLM response.
@@ -28,7 +30,7 @@ RendrAI decomposes generation into specialized stages that independently plan, a
 | Phase 6 – Runtime & Preview | ✅ Complete |
 | Phase 7 – Validation & Repair | ✅ Complete |
 | Phase 8 – Builder UI, Persistence & Export | ✅ Complete |
-| Phase 9 – Deployment & Polish | 🚧 In Progress |
+| Phase 9 – Pipeline Polish & Optimization | ✅ Complete |
 
 ## Current Capabilities
 
@@ -53,17 +55,10 @@ RendrAI decomposes generation into specialized stages that independently plan, a
 - Export (.zip)
 - Better streaming UI
 
-### 🚧 Next — Phase 9
-- Deployment infrastructure
-- Production process management
-- Deployment hardening
-- Production polish
-
 ### 🔮 Future
 - Multi-page applications
 - Next.js support
 - Backend generation
-- One-click deployment
 
 ## Engineering Highlights
 - **Multi-stage AI generation pipeline**
@@ -200,7 +195,8 @@ Create a `.env` file in `apps/server/` based on `.env.example`:
 ```env
 PORT=3000
 MONGODB_URI=mongodb://localhost:27017/rendrai
-GEMINI_API_KEY=your_api_key_here
+GEMINI_API_KEY=your_gemini_api_key_here
+GROQ_API_KEY=your_groq_api_key_here
 ```
 
 ### Development

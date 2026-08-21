@@ -275,7 +275,7 @@ export async function generateProject(project: HydratedDocument<Project>) {
     // Telemetry Calculations
     const aiFiles = generatedProject.files.filter(f => !f.path.includes('node_modules') && f.content && f.content.length > 0);
     const aiFileCount = aiFiles.length;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const largestFile = aiFiles.reduce((max, f) => f.content!.length > (max.content?.length || 0) ? f : max, {} as any);
     const avgFileSize = aiFiles.reduce((sum, f) => sum + f.content!.length, 0) / (aiFileCount || 1);
     const requestedFeatures = projectPlan.features.length;

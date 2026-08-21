@@ -15,8 +15,7 @@ export type ProjectStatus =
   | "pending_changes";
 
 export type ProjectFramework =
-  | "react-vite"
-  | "vanilla";
+  | "react-vite";
 
 export interface Snapshot {
   refinementId: string;
@@ -70,7 +69,7 @@ const projectSchema = new Schema<Project>(
 
     framework: {
       type: String,
-      enum: ["react-vite", "vanilla"],
+      enum: ["react-vite"],
       default: null,
     },
 
@@ -126,7 +125,7 @@ const projectSchema = new Schema<Project>(
     },
     
     history: {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       type: [Schema.Types.Mixed] as any,
       default: [],
     },

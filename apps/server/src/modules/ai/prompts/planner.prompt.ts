@@ -55,9 +55,4 @@ GENERAL RULES:
 FRAMEWORK SELECTION:
 - You are the ONLY stage allowed to decide the framework.
 - React is the ONLY supported framework for V1. You MUST ALWAYS output \`frontendFramework: "react-vite"\` regardless of the user's prompt.
-/* 
-  TODO (Vanilla JS Re-enablement):
-  Uncomment the below rules and remove the hardcoded react-vite rule above to restore Vanilla JS support.
-  - ONLY output \`frontendFramework: "vanilla-js"\` if the user's prompt explicitly mentions phrases like "Vanilla JS", "Plain JavaScript", "Without React", or "No React".
-  - Never infer Vanilla JS just because the application is simple.
-*/`;
+`;

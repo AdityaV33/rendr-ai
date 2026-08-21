@@ -56,7 +56,7 @@ export class RefinementService {
     const emit = (type: string, durationMs?: number) => {
       if (onEvent) {
         // Mock state to satisfy interface
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         onEvent({ type: type as any, timestamp: Date.now(), durationMs, state: {} as any });
       }
     };
@@ -327,7 +327,7 @@ ${fileTree}
        
        try {
          runtimeState = await startPreviewOnly(project._id.toString(), devCmd);
-       // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        
        } catch (err: any) {
          throw new Error("Preview verification failed: Failed to start preview. " + err.message);
        }

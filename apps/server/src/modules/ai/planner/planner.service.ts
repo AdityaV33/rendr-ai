@@ -1,5 +1,4 @@
 import { ZodError } from "zod";
-import { GroqService } from "../clients/groq.service.js";
 import { PLANNER_SYSTEM_PROMPT } from "../prompts/planner.prompt.js";
 import { projectPlanSchema } from "../schemas/project-plan.schema.js";
 import type { ProjectPlan } from "../types/project-plan.types.js";

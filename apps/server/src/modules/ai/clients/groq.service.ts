@@ -35,7 +35,7 @@ export class GroqService {
    */
   async generateStructured<T>(
     prompt: string,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     responseSchema: any,
     systemInstruction?: string,
     config?: { temperature?: number; timeoutMs?: number; taskName?: string; model: string }
@@ -97,7 +97,7 @@ export class GroqService {
             const parsed = parseFloat(retryHeader);
             if (!isNaN(parsed)) retryAfterMs = parsed * 1000;
           } else {
-            const match = errBody.match(/try again in (?:(\d+)m)?([\d\.]+)s/);
+            const match = errBody.match(/try again in (?:(\d+)m)?([\d.]+)s/);
             if (match) {
               const m = match[1] ? parseInt(match[1]) : 0;
               const s = parseFloat(match[2]);

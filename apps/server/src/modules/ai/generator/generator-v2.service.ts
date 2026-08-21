@@ -44,7 +44,7 @@ export class GeneratorV2Service {
   }
 
   private cleanRawOutput(output: string): string {
-    let content = output.trim();
+    const content = output.trim();
     
     // Match the first markdown code fence, allowing preambles and trailing text.
     const fenceMatch = content.match(/```(?:[a-zA-Z]*\n)?([\s\S]*?)```/);
@@ -113,7 +113,7 @@ export class GeneratorV2Service {
     // Parallel Install
     const workspacePath = getWorkspacePath(projectId);
     const packageJsonFile = templateFiles.find(f => f.path === "package.json");
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     let installPromise: Promise<any> | null = null;
 
     if (packageJsonFile) {
@@ -383,7 +383,7 @@ Generation Time: ${(totalTimeMs / 1000).toFixed(2)}s
 
     const originalPrompt = promptObj.prompt;
     const MAX_RETRIES = 2;
-    const start = performance.now();
+
     let finalCode = "";
     let finalDuration = 0;
 

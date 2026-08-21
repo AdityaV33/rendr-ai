@@ -131,7 +131,7 @@ export class GateRunnerNode {
       try {
         await executeRepair("Build", buildResult.stdout + "\n" + buildResult.stderr);
         buildResult = await runBuild();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       } catch (err: any) {
         console.error(`[GateRunner] Build gate failed: ${err.message}`);
         currentState.errors.push("Build failed: " + buildResult.stdout);
@@ -156,7 +156,7 @@ export class GateRunnerNode {
         emit("verify_started");
         console.log(`[GateRunner] Preview successfully verified at ${currentState.previewUrl}!`);
       }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     } catch (err: any) {
       // Runtime repair should only trigger if the server genuinely failed to start within the timeout
       // and we still have repair budget.
@@ -168,7 +168,7 @@ export class GateRunnerNode {
         if (retryState?.preview) {
           currentState.previewUrl = retryState.preview.url;
         }
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       } catch (retryErr: any) {
          currentState.errors.push("Preview failed to start: " + retryErr.message);
       }

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { GroqSchedulerService } from "./groq-scheduler.service.js";
-import { GroqService, GroqRateLimitError, GroqStructuredOutputError } from "../clients/groq.service.js";
+import { GroqService, GroqRateLimitError } from "../clients/groq.service.js";
 import { pipelineRunContext } from "../utils/run-context.js";
 import { env } from "../../../config/env.js";
 
