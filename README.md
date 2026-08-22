@@ -184,7 +184,7 @@ apps/client/
 apps/server/
 ├── src/
 │   ├── modules/
-│   │   ├── ai/           # LangGraph pipeline, Planner, Architect, Generator, Repair
+│   │   ├── ai/           # Custom orchestration pipeline, Planner, Architect, Generator, Repair
 │   │   ├── auth/         # JWT authentication controllers/services
 │   │   ├── projects/     # MongoDB Mongoose models and CRUD
 │   │   ├── runtime/      # Process management, workspace sync, port allocation
@@ -203,7 +203,7 @@ apps/server/
 **Workflow Example: Generation Pipeline**
 1. `project.controller.ts` receives the HTTP request.
 2. `project.service.ts` creates the MongoDB record.
-3. `ai.service.ts` triggers the LangGraph state machine.
+3. `ai.service.ts` triggers the custom state machine orchestrator.
 4. `planner.service.ts` calls Groq and returns a `ProjectPlan`.
 5. `architect.service.ts` calls Gemini and returns an `ArchitectureManifest`.
 6. `generator-v2.service.ts` reads the manifest and calls Gemini in parallel batches.
