@@ -27,31 +27,29 @@ test('ModelSchedulerService - 429 Run-Scoped Exclusion', async (t) => {
 
   await t.test('the next run can select it again', async () => {
     // In a new run context, model-A should be available again
+    const localScheduler = new ModelSchedulerService();
     await pipelineRunContext.run({ blacklistedModels: new Set<string>(), groqExcludedModels: new Set<string>(), groqModelCooldowns: new Map<string, number>() }, async () => {
-      const model = await scheduler.acquireModel();
+      const model = await localScheduler.acquireModel();
       assert.equal(model, 'model-A'); // model-A is back!
     });
   });
 
   await t.test('503 does not blacklist it', async () => {
+    const localScheduler = new ModelSchedulerService();
     await pipelineRunContext.run({ blacklistedModels: new Set<string>(), groqExcludedModels: new Set<string>(), groqModelCooldowns: new Map<string, number>() }, async () => {
-      const model = await scheduler.acquireModel();
+      const model = await localScheduler.acquireModel();
       assert.equal(model, 'model-A');
 
       // Simulate a 503 Server Error
-      scheduler.reportFailure(model, { status: 503 }, 100);
+      localScheduler.reportFailure(model, { status: 503 }, 100);
 
       // Verify it's in coolingDown state, NOT blacklisted
       const context = pipelineRunContext.getStore();
       assert.ok(!context?.blacklistedModels.has('model-A'));
-
-      // Clean up for next test by resetting cooldown manually
-      // We can't easily reset it, but since 503 cools down for 2s, we can just wait or redefine models.
     });
   });
 
   await t.test('timeout does not blacklist it', async () => {
-    // We recreate scheduler to clear the 503 cooldown from previous test
     const cleanScheduler = new ModelSchedulerService();
     await pipelineRunContext.run({ blacklistedModels: new Set<string>(), groqExcludedModels: new Set<string>(), groqModelCooldowns: new Map<string, number>() }, async () => {
       const model = await cleanScheduler.acquireModel();
@@ -89,7 +87,7 @@ test('ModelSchedulerService - 429 Run-Scoped Exclusion', async (t) => {
       context?.blacklistedModels.add('model-A');
       context?.blacklistedModels.add('model-B');
       
-      await assert.rejects(cleanScheduler.acquireModel(), /All models are currently exhausted/);
+      await assert.rejects(cleanScheduler.acquireModel(), /All configured Gemini models exhausted/);
     });
   });
 });

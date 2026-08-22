@@ -23,7 +23,6 @@ export interface Snapshot {
   createdAt: Date;
   files: {
     path: string;
-    existedBefore: boolean;
     content: string;
   }[];
 }
@@ -40,7 +39,13 @@ export interface Project {
   pendingProject: GeneratedProject | null;
   files: string[];
   pipelineStage: string | null;
-  pipelineTimestamps: Record<string, Date> | null;
+  pipelineTimestamps: {
+    planningStartedAt?: Date;
+    architectStartedAt?: Date;
+    generationStartedAt?: Date;
+    previewStartedAt?: Date;
+    completedAt?: Date;
+  } | null;
   history: Snapshot[];
 
   createdAt: Date;

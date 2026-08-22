@@ -1,4 +1,5 @@
 import { userService } from "../users/user.service.js";
+import { UnauthorizedError, ConflictError, NotFoundError } from "../lib/http-error.js";
 
 import { compare, hash } from "../lib/bcrypt.js";
 
@@ -17,7 +18,7 @@ export async function register(data: RegisterInput) {
   const existingUser = await userService.findByEmail(data.email);
 
   if (existingUser) {
-    throw new Error("An account with this email already exists.");
+    throw new ConflictError("An account with this email already exists.");
   }
 
   const passwordHash = await hash(data.password);
@@ -50,7 +51,7 @@ export async function login(data: LoginInput) {
   const user = await userService.findByEmail(data.email);
 
   if (!user) {
-    throw new Error("Invalid email or password.");
+    throw new UnauthorizedError("Invalid email or password.");
   }
 
   const isPasswordMatches = await compare(
@@ -59,7 +60,7 @@ export async function login(data: LoginInput) {
   );
 
   if (!isPasswordMatches) {
-    throw new Error("Invalid email or password.");
+    throw new UnauthorizedError("Invalid email or password.");
   }
 
   const accessToken = generateAccessToken(user.id);
@@ -86,7 +87,7 @@ export async function refresh(refreshToken: string) {
   const user = await userService.findById(payload.sub);
 
   if (!user || !user.refreshTokenHash) {
-    throw new Error("Invalid refresh token.");
+    throw new UnauthorizedError("Invalid refresh token.");
   }
 
   const refreshTokenMatches = await compare(
@@ -95,7 +96,7 @@ export async function refresh(refreshToken: string) {
   );
 
   if (!refreshTokenMatches) {
-    throw new Error("Invalid refresh token.");
+    throw new UnauthorizedError("Invalid refresh token.");
   }
 
   const newAccessToken = generateAccessToken(user.id);
@@ -134,7 +135,7 @@ export async function me(userId: string) {
   const user = await userService.findById(userId);
 
   if (!user) {
-    throw new Error("User not found.");
+    throw new NotFoundError("User not found.");
   }
 
   return {

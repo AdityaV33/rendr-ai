@@ -14,9 +14,14 @@ export class PlannerService {
    * Receives a user prompt and produces a validated ProjectPlan.
    * If the first Groq response fails schema validation, retries exactly once.
    */
-  async plan(prompt: string): Promise<ProjectPlan> {
+  async plan(prompt: string, feedback?: string): Promise<ProjectPlan> {
     if (!prompt || prompt.trim().length === 0) {
       throw new BadRequestError("A prompt is required to generate a project plan.");
+    }
+
+    let finalPrompt = prompt;
+    if (feedback) {
+      finalPrompt += `\n\nCRITICAL SYSTEM FEEDBACK FROM PREVIOUS ATTEMPT:\n${feedback}\n\nYou MUST reduce the scope of the application to fit the architectural budget constraints. Identify the core requested workflow and focus exclusively on it.`;
     }
 
     let lastError: unknown;
@@ -24,7 +29,7 @@ export class PlannerService {
     for (let attempt = 0; attempt <= MAX_VALIDATION_RETRIES; attempt++) {
       try {
         const raw = await this.groqScheduler.generateStructured<ProjectPlan>(
-          prompt,
+          finalPrompt,
           projectPlanSchema,
           PLANNER_SYSTEM_PROMPT,
           { taskName: "Planner" }

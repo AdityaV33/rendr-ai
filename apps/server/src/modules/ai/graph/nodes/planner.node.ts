@@ -9,7 +9,7 @@ export class PlannerNode {
   constructor(private readonly plannerService: PlannerService) {}
 
   async execute(state: GenerationState): Promise<GenerationState> {
-    const plan = await this.plannerService.plan(state.prompt);
+    const plan = await this.plannerService.plan(state.prompt, state.plannerFeedback);
     
     return {
       ...state,

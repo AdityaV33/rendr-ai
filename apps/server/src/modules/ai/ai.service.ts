@@ -89,7 +89,7 @@ export class AiService {
       });
     } finally {
       // Stop the dev server if it was started during validation
-      devServerManager.stopServer(initialState.project.id);
+      await devServerManager.stopServer(initialState.project.id);
     }
 
     if (finalState.validationResult && !finalState.validationResult.passed) {

@@ -64,8 +64,7 @@ describe("GeminiService - Error Handling & Aborts", () => {
       const result = await service.generateText("hello");
       
       expect(result).toBe("Success on attempt 2");
-      // The model should have been blacklisted because it was a transient error
-      expect(store.blacklistedModels.has("models/gemini-1.5-flash")).toBe(true);
+      // The model failure is reported to the scheduler which handles blacklisting
       expect(scheduler.reportFailure).toHaveBeenCalledTimes(1); // the abort error
       expect(scheduler.reportSuccess).toHaveBeenCalledTimes(1); // the success
     });

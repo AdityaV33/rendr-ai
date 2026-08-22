@@ -94,7 +94,7 @@ export async function deleteProject(
 
   if (project) {
     try {
-      runtimeManagerService.stopRuntime(projectId);
+      await runtimeManagerService.stopRuntime(projectId);
       
       // Fire and forget workspace deletion to unblock the API response
       workspaceService.deleteWorkspace(projectId).catch(err => {
@@ -169,7 +169,7 @@ export async function generateProject(project: HydratedDocument<Project>) {
         // Fire-and-forget DB update for live status tracking
         void (async () => {
           let stage: string | null = null;
-          let timestampKey: string | null = null;
+          let timestampKey: keyof NonNullable<import("./project.model.js").Project["pipelineTimestamps"]> | null = null;
 
           switch (event.type) {
             case "planner_started":
@@ -219,9 +219,6 @@ export async function generateProject(project: HydratedDocument<Project>) {
           console.log("\n-----------------------------------");
           console.log("Runtime Branch Started");
           console.log("-----------------------------------");
-          
-          const startRuntime = performance.now();
-          runtimeTime = performance.now() - startRuntime;
         }
       }
     });
@@ -299,7 +296,6 @@ export async function generateProject(project: HydratedDocument<Project>) {
     console.log(`Architecture retries: ${typedMetrics?.architectRetries || 0}`);
     console.log("\n===================================");
     console.log(`AI Branch: ${aiTime.toFixed(0)}ms`);
-    console.log(`Runtime Prep: ${runtimeTime.toFixed(0)}ms`);
     console.log(`Synchronization & Install: ${syncTime.toFixed(0)}ms`);
     console.log(`Total Pipeline: ${totalTime.toFixed(0)}ms`);
     console.log("===================================\n");

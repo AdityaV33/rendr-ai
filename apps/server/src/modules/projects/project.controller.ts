@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
 import path from "node:path";
+import { ZipArchive } from "archiver";
 
 import { NotFoundError, BadRequestError, ConflictError } from "../lib/http-error.js";
 import { toProjectResponse } from "./project.mapper.js";
@@ -183,7 +184,6 @@ export async function undoProjectController(
 
   return res.status(200).json(toProjectResponse(project));
 }
-import { ZipArchive } from "archiver";
 
 export async function exportProject(req: Request, res: Response) {
   const projectId = req.params.projectId as string;
