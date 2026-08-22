@@ -241,16 +241,18 @@ apps/server/
 
 ---
 
-## 17. Setup & Installation
+## 17. Local Setup & Bring Your Own Keys (BYOK)
 
-### Requirements
+RendrAI is designed to be run locally on your own machine. You supply your own database and API keys, and the workspaces are generated directly on your local file system.
+
+### 1. Requirements
 - Node.js 20+
 - pnpm 9+
 - MongoDB instance (Atlas or local)
-- Gemini API Key
-- Groq API Key
+- **Gemini API Key:** Get one from Google AI Studio (Free tier is sufficient).
+- **Groq API Key:** Get one from the Groq Console (Free tier is sufficient).
 
-### Environment Variables (`apps/server/.env`)
+### 2. Configuration (`apps/server/.env`)
 Create a `.env` file based on `.env.example`:
 ```env
 PORT=3000
@@ -266,7 +268,7 @@ GROQ_API_KEY=<your-groq-api-key>
 GROQ_MODELS=qwen/qwen3.6-27b,openai/gpt-oss-20b,groq/compound
 ```
 
-### Installation
+### 3. Installation & Running
 ```bash
 # Install all dependencies across the monorepo
 pnpm install
