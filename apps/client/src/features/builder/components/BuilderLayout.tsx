@@ -17,7 +17,7 @@ const BuilderLayout = ({
   const [rightWidth, setRightWidth] = useState(350);
   const [isDragging, setIsDragging] = useState(false);
 
-  const handleMouseDown = (_e: React.MouseEvent) => {
+  const handleMouseDown = () => {
     if (sidebarTab !== "preview") return;
     setIsDragging(true);
     document.body.style.cursor = "col-resize";

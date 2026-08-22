@@ -132,7 +132,6 @@ export async function startGeneration(owner: string, projectId: string) {
 export async function generateProject(project: HydratedDocument<Project>) {
   const projectId = project._id.toString();
 
-  let runtimeTime = 0;
   const startOverall = performance.now();
 
   let saveQueue = Promise.resolve<unknown>(null);
