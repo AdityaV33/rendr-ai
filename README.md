@@ -116,7 +116,7 @@ Generated applications are executed on the host machine. (Docker integration is 
 - **Templates:** A base React/Vite boilerplate (`apps/server/templates/react`) is copied in, and `pnpm install` is executed natively.
 - **Preview Server:** `dev-server.manager.ts` spawns `vite` using the `cross-spawn` library.
 - **Process Management:** To prevent zombie Vite processes, the system uses the `tree-kill` library to send `SIGTERM` signals to the entire process group when a project is closed.
-- **Ports:** `port.service.ts` dynamically allocates ports starting from `45000` and actively probes them for `EADDRINUSE` conflicts before releasing them back to the pool.
+- **Ports:** `port.service.ts` dynamically allocates ports starting from `5174` and actively probes them for `EADDRINUSE` conflicts before releasing them back to the pool.
 
 ---
 
