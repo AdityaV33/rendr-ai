@@ -286,7 +286,7 @@ The Builder UI will be available at `http://localhost:5173`.
 **Observed Pipeline Timings (Average Runs):**
 - **Main Generation:** < 2 minutes (Full parallel pipeline from prompt to running Vite server)
 - **AI Refinement:** < 30 seconds (Targeted planning, single-file generation, and hot-reload)
-- **Repair Cycle:** ~15 seconds per compiler failure (if required)
+- **Repair Cycle:** ~15 seconds per compiler failure (capped at 3 repair cycles / 4 total build attempts before aborting)
 
 *(Note: These benchmarks depend on current Gemini/Groq API latencies and are observed from actual repository test runs.)*
 
