@@ -189,8 +189,8 @@ export async function exportProject(req: Request, res: Response) {
   const projectId = req.params.projectId as string;
   const project = await projectService.requireProject(req.user.id, projectId);
 
-  if (project.status !== "ready" || !project.generatedProject?.files) {
-    throw new BadRequestError("Project is not ready for export.");
+  if (!project.generatedProject?.files || project.generatedProject.files.length === 0) {
+    throw new BadRequestError("Project has no files to export.");
   }
 
   const safeFilename = project.name.replace(/[^a-z0-9]/gi, "_").toLowerCase() || "project";

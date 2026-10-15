@@ -48,7 +48,7 @@ const envSchema = z.object({
   GROQ_API_KEY: z.string().optional(),
   GROQ_MODELS: z
     .string()
-    .default("qwen/qwen3.6-27b,openai/gpt-oss-20b,openai/gpt-oss-120b")
+    .default("qwen/qwen3.8-27b,openai/gpt-oss-20b,openai/gpt-oss-120b")
     .transform((val) => val.split(",").map((s) => s.trim()).filter(Boolean))
     .refine((arr) => arr.length > 0, {
       message: "GROQ_MODELS must contain at least one valid model.",

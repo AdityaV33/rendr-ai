@@ -114,7 +114,7 @@ Generated applications are executed on the host machine. (Docker integration is 
 
 - **Workspace:** `runtime-manager.service.ts` creates isolated directories in `/tmp/rendrai-workspaces/<id>`.
 - **Templates:** A base React/Vite boilerplate (`apps/server/templates/react`) is copied in, and `pnpm install` is executed natively.
-- **Preview Server:** `dev-server.manager.ts` spawns `vite` using the `cross-spawn` library.
+- **Preview Server:** `dev-server.manager.ts` spawns `vite` using the native `child_process.spawn` function.
 - **Process Management:** To prevent zombie Vite processes, the system uses the `tree-kill` library to send `SIGTERM` signals to the entire process group when a project is closed.
 - **Ports:** `port.service.ts` dynamically allocates ports starting from `5174` and actively probes them for `EADDRINUSE` conflicts before releasing them back to the pool.
 
@@ -126,7 +126,7 @@ The frontend Builder (`apps/client/src/features/builder`) is the primary user in
 
 - **State:** Managed by `builder.store.ts` (Zustand). It tracks the `currentProject`, `pendingProject`, and guards against UI race conditions during long-polling.
 - **Editor:** Uses `@monaco-editor/react`. Files are mounted using `file:///` URIs to allow Monaco's internal language server to correctly resolve relative imports between open tabs.
-- **Autosave:** Edits in Monaco trigger an `onChange` handler with a 1000ms debounce, saving the file to the backend physical disk and instantly triggering a Vite HMR update in the iframe preview.
+- **Autosave:** Edits in Monaco trigger an `onChange` handler with a 300ms debounce, saving the file to the backend physical disk and instantly triggering a Vite HMR update in the iframe preview.
 - **File Management:** Files can be created, renamed, and deleted, with automatic cleanup of stale editor tabs.
 
 ---
@@ -261,11 +261,11 @@ CLIENT_ORIGIN=http://localhost:5173
 JWT_ACCESS_SECRET=<secret>
 JWT_REFRESH_SECRET=<secret>
 GEMINI_API_KEY=<your-gemini-api-key>
-GEMINI_MODELS=models/gemini-3.5-flash-lite,models/gemini-3.1-flash-lite,models/gemini-flash-lite-latest
+GEMINI_MODELS=models/gemini-flash-lite-latest,models/gemini-3.5-flash-lite,models/gemini-3-flash-preview,models/gemini-3.8-flash,models/gemini-3.7-flash,models/gemini-flash-latest
 GENERATOR_VERSION=v2
 MAX_PARALLEL_GENERATIONS=4
 GROQ_API_KEY=<your-groq-api-key>
-GROQ_MODELS=qwen/qwen3.6-27b,openai/gpt-oss-20b,groq/compound
+GROQ_MODELS=qwen/qwen3.8-27b,openai/gpt-oss-20b,openai/gpt-oss-120b
 ```
 
 ### 3. Installation & Running

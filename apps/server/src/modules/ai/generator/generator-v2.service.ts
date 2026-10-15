@@ -24,6 +24,49 @@ import { getWorkspacePath } from "../../runtime/workspace.service.js";
 import { updateWorkspaceFile } from "../../runtime/workspace-file.service.js";
 import { ContractGate } from "./contract.gate.js";
 
+/**
+ * Minimum version requirements for dependencies with React 19 compatibility constraints.
+ * Only packages with strict React peer dependency boundaries that reject React 19
+ * (causing npm ERESOLVE failures during template install) should be listed here.
+ */
+interface DependencyCompatibilityRule {
+  isCompatible: (version: string) => boolean;
+  fallbackVersion: string;
+}
+
+const COMPATIBILITY_RULES: Record<string, DependencyCompatibilityRule> = {
+  "lucide-react": {
+    // lucide-react added React 19 support in 0.471.0; 1.x also fully supports React 19.
+    // Versions < 0.471.0 (e.g. 0.344.0) only allow React <= 18 and trigger npm ERESOLVE.
+    isCompatible: (version: string) => {
+      if (version === "latest" || version === "*") return true;
+      const match = version.match(/(\d+)\.(\d+)/);
+      if (!match) return false;
+      const major = parseInt(match[1], 10);
+      const minor = parseInt(match[2], 10);
+      return major > 0 || minor >= 471;
+    },
+    fallbackVersion: "^1.0.0",
+  },
+};
+
+/**
+ * Sanitizes an AI-specified dependency version against compatibility rules.
+ * If the AI specifies a version known to be incompatible with React 19 (e.g. lucide-react@^0.344.0),
+ * it is safely upgraded to a compatible version. Otherwise, the Architect's version choice is preserved.
+ */
+export function sanitizeDependencyVersion(name: string, aiVersion: string | undefined): string {
+  const rule = COMPATIBILITY_RULES[name];
+  if (!rule) return aiVersion || "latest";
+
+  if (!aiVersion || !rule.isCompatible(aiVersion)) {
+    console.warn(`[GeneratorV2] Overriding incompatible AI dependency version: ${name}@${aiVersion || "unspecified"} -> ${rule.fallbackVersion} (React 19 compatibility)`);
+    return rule.fallbackVersion;
+  }
+
+  return aiVersion;
+}
+
 interface V2Metrics {
   totalFiles: number;
   totalApiTime: number;
@@ -94,8 +137,8 @@ export class GeneratorV2Service {
 
     // Phase 0: Template Engine (Deterministic Boilerplate)
     const deps = architecturePlan.dependencies || [];
-    const dependencies = deps.filter(d => !d.isDev).reduce((acc, d) => ({ ...acc, [d.name]: d.version || 'latest' }), {});
-    const devDependencies = deps.filter(d => d.isDev).reduce((acc, d) => ({ ...acc, [d.name]: d.version || 'latest' }), {});
+    const dependencies = deps.filter(d => !d.isDev).reduce((acc, d) => ({ ...acc, [d.name]: sanitizeDependencyVersion(d.name, d.version) }), {});
+    const devDependencies = deps.filter(d => d.isDev).reduce((acc, d) => ({ ...acc, [d.name]: sanitizeDependencyVersion(d.name, d.version) }), {});
 
     const context: TemplateContext = {
       projectName: slugifyProjectName(projectPlan.applicationType),

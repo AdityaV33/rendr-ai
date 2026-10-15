@@ -3,6 +3,8 @@ import type { ComponentContract } from "../context/context-builder.types.js";
 
 interface ParsedAST {
   exports: string[];
+  /** Exports that are purely type-level (interface or type alias declarations). */
+  typeOnlyExports: Set<string>;
   imports: Array<{ name: string; path: string }>;
 }
 
@@ -13,6 +15,7 @@ export class ContractGate {
   static parseCode(code: string, fileName: string = "temp.tsx"): ParsedAST {
     const sourceFile = ts.createSourceFile(fileName, code, ts.ScriptTarget.Latest, true);
     const exports = new Set<string>();
+    const typeOnlyExports = new Set<string>();
     const imports = new Set<{ name: string; path: string }>();
 
     ts.forEachChild(sourceFile, node => {
@@ -40,6 +43,10 @@ export class ContractGate {
         if (node.exportClause && ts.isNamedExports(node.exportClause)) {
           for (const el of node.exportClause.elements) {
             exports.add(el.name.text);
+            // `export type { Foo }` or `export { type Foo }` is type-only
+            if (node.isTypeOnly || el.isTypeOnly) {
+              typeOnlyExports.add(el.name.text);
+            }
           }
         }
       } else if (ts.isExportAssignment(node)) {
@@ -64,6 +71,7 @@ export class ContractGate {
           }
         } else if (ts.isTypeAliasDeclaration(node) || ts.isInterfaceDeclaration(node)) {
           exports.add(node.name.text);
+          typeOnlyExports.add(node.name.text);
         } else if (ts.isClassDeclaration(node) && node.name) {
            if ((node as any).modifiers.some((m: any) => m.kind === ts.SyntaxKind.DefaultKeyword)) {
             exports.add("default");
@@ -75,7 +83,7 @@ export class ContractGate {
       }
     });
 
-    return { exports: Array.from(exports), imports: Array.from(imports) };
+    return { exports: Array.from(exports), typeOnlyExports, imports: Array.from(imports) };
   }
 
   /**
@@ -132,6 +140,10 @@ export class ContractGate {
         if (strictAllowedExports.size === 1 && !strictAllowedExports.has("default")) strictAllowedExports.add("default");
 
         for (const exported of ast.exports) {
+          // Allow type/interface exports through strict mode — they are type-level only
+          // and do not affect runtime behavior or break the Architect's component contract.
+          if (ast.typeOnlyExports.has(exported)) continue;
+
           if (!strictAllowedExports.has(exported)) {
             violations.push(`You exported '${exported}', but the Architect contract strictly limits exports to: [${Array.from(expectedExports).join(", ")}]. You may not add unauthorized exports during repair.`);
           }

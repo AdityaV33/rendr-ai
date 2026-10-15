@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 
 import AppLayout from "@/components/layout/AppLayout";
 import BuilderSidebar from "@/features/builder/components/BuilderSidebar";
@@ -9,12 +9,10 @@ import BuilderLayout from "@/features/builder/components/BuilderLayout";
 import CodeEditor from "@/features/builder/editor/CodeEditor";
 import { useBuilderStore } from "@/features/builder/store/builder.store";
 import { useWorkspaceStore } from "@/features/builder/store/workspace.store";
-import { deleteProject } from "@/features/builder/services/builder.service";
 import axios from "axios";
 
 const BuilderPage = () => {
   const { projectId } = useParams();
-  const navigate = useNavigate();
 
   const {
     currentProject,
@@ -134,18 +132,6 @@ const BuilderPage = () => {
     }
   };
 
-  const handleDeleteProject = async () => {
-    if (!projectId) return;
-
-    try {
-      await deleteProject(projectId);
-      navigate("/dashboard");
-    } catch (err) {
-      console.error("Failed to delete project:", err);
-      alert("Failed to delete project");
-    }
-  };
-
   if (loading) {
     return (
       <AppLayout>
@@ -179,7 +165,6 @@ const BuilderPage = () => {
             <div className="flex h-full flex-col">
               <BuilderHeader
                 project={currentProject}
-                onDelete={handleDeleteProject}
               />
 
               <div className="min-h-0 flex-1">

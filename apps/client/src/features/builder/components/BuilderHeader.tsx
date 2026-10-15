@@ -17,12 +17,10 @@ const DownloadIcon = ({ size = 16, className = "" }) => (
 
 interface BuilderHeaderProps {
   project: Project;
-  onDelete?: () => void;
 }
 
 const BuilderHeader = ({
   project,
-  onDelete,
 }: BuilderHeaderProps) => {
   const navigate = useNavigate();
   const [isExporting, setIsExporting] = useState(false);
@@ -60,11 +58,7 @@ const BuilderHeader = ({
     });
   };
 
-  const handleDelete = () => {
-    if (window.confirm("Are you sure you want to delete this project? This action cannot be undone.")) {
-      onDelete?.();
-    }
-  };
+
 
   const handleSave = () => {
     void saveCurrentFile();
@@ -204,7 +198,7 @@ const BuilderHeader = ({
 
 
 
-        {project.status === 'ready' && (
+        {(project.status === 'ready' || project.status === 'failed' || project.status === 'pending_changes') && (
           <button
             onClick={handleExport}
             disabled={isExporting}
@@ -222,13 +216,6 @@ const BuilderHeader = ({
             Export ZIP
           </button>
         )}
-
-        <button
-          onClick={handleDelete}
-          className="flex items-center gap-2 rounded-lg border border-red-900/50 bg-red-950/20 px-4 py-2 font-mono text-sm text-red-500 transition hover:bg-red-900/40"
-        >
-          Delete Project
-        </button>
 
         <button
           className="rounded-lg border border-neutral-700 px-4 py-2 font-mono text-sm transition hover:bg-neutral-800"
