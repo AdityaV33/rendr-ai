@@ -155,9 +155,16 @@ export class ModelSchedulerService {
         return selected.name;
       }
 
-      // No models available. Find the earliest cooldown expiry.
+      // No models available. Find the earliest cooldown expiry for models that are NOT blacklisted.
       let earliestExpiry = Infinity;
-      const coolingModels = Array.from(this.models.values()).filter(m => m.status === "coolingDown");
+      const coolingModels = Array.from(this.models.values()).filter(m => 
+        m.status === "coolingDown" && 
+        (!blacklistedModels || !blacklistedModels.has(m.name))
+      );
+      
+      if (coolingModels.length === 0) {
+        throw new Error("All configured Gemini models exhausted for this run.");
+      }
       
       const cooldownLogs = coolingModels.map(m => {
         const remaining = m.cooldownExpiryTimestamp ? Math.max(0, m.cooldownExpiryTimestamp - Date.now()) : 0;
@@ -221,11 +228,12 @@ export class ModelSchedulerService {
     }
 
     // Determine if error is transient
-    const isTimeout = error instanceof Error && error.message === "Request timed out";
     const errObj = error as Record<string, unknown>;
     const status = typeof errObj?.status === "number" ? errObj.status : undefined;
     const code = typeof errObj?.code === "string" ? errObj.code : undefined;
     const name = error instanceof Error ? error.name : typeof errObj?.name === "string" ? errObj.name : undefined;
+
+    const isTimeout = (error instanceof Error && error.message === "Request timed out") || name === "AbortError" || (error instanceof Error && error.message.toLowerCase().includes("abort"));
 
     const isRateLimit = status === 429;
     const isNotFound = status === 404;
@@ -243,18 +251,28 @@ export class ModelSchedulerService {
       if (isRateLimit) {
         model.rateLimitCount += 1;
         reason = "429 Quota Exceeded / Rate Limited";
-        cooldownMs = 0; // Handled by run-scoped blacklist
+        // Check if error contains a retry delay (e.g. "Please retry in 28.2s")
+        let parsedCooldown = 30000; // Default to 30s
+        if (error instanceof Error && error.message.includes("retry in ")) {
+           const match = error.message.match(/retry in ([\d.]+)s/);
+           if (match && match[1]) {
+             parsedCooldown = parseFloat(match[1]) * 1000;
+           }
+        }
+        cooldownMs = parsedCooldown;
       } else if (isServerFailure) {
         reason = `${status} Server Error`;
-        // Short cooldown for 500s
-        cooldownMs = 2000;
+        // Exponential cooldown for 500s: 5s, 15s, 45s, 135s... (max 2 minutes)
+        cooldownMs = Math.min(120000, 5000 * Math.pow(3, model.consecutiveFailures - 1));
       } else if (isTimeout) {
         model.timeoutCount += 1;
         reason = "Request Timeout";
-        cooldownMs = this.baseCooldownMs;
+        // Exponential cooldown for timeouts: 15s, 45s, 135s... (max 5 minutes)
+        cooldownMs = Math.min(300000, 15000 * Math.pow(3, model.consecutiveFailures - 1));
       } else if (isNetworkFailure) {
         reason = "Network Failure";
-        // No cooldown
+        // Exponential cooldown for network failures: 10s, 30s, 90s... (max 2 minutes)
+        cooldownMs = Math.min(120000, 10000 * Math.pow(3, model.consecutiveFailures - 1));
       } else if (isNotFound) {
         reason = "404 Model Unavailable / Deprecated";
         cooldownMs = this.maxCooldownMs; // effectively disable it

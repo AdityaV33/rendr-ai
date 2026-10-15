@@ -1,4 +1,5 @@
-import { spawn, type ChildProcess } from "node:child_process";
+import type { ChildProcess } from "node:child_process";
+import * as processService from "./process.service.js";
 
 export class DevServerManager {
   private static instance: DevServerManager;
@@ -22,7 +23,7 @@ export class DevServerManager {
     const url = `http://localhost:${port}`;
     const start = performance.now();
     
-    const child = spawn("pnpm", ["run", "dev", "--port", port.toString(), "--strictPort"], { 
+    const child = processService.startProcess("pnpm", ["run", "dev", "--port", port.toString(), "--strictPort"], { 
       cwd: workspacePath,
       stdio: 'ignore' // We don't need to clog our stdout with Vite logs
     });
@@ -55,7 +56,7 @@ export class DevServerManager {
     }
 
     if (!isReady) {
-      child.kill();
+      processService.stopProcess(child).catch(() => {});
       this.activeServers.delete(projectId);
       throw new Error(`Dev server failed to start within 30s on ${url}`);
     }
@@ -64,12 +65,11 @@ export class DevServerManager {
     return { startupMs };
   }
 
-  stopServer(projectId: string): void {
+  async stopServer(projectId: string): Promise<void> {
     const server = this.activeServers.get(projectId);
     if (server) {
-      // Try graceful kill
-      server.process.kill();
       this.activeServers.delete(projectId);
+      await processService.stopProcess(server.process);
     }
   }
 }

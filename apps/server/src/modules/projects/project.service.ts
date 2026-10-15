@@ -1,12 +1,14 @@
 import crypto from "node:crypto";
-import { ProjectModel } from "./project.model.js";
+import type { HydratedDocument } from "mongoose";
+import { ProjectModel, type Project } from "./project.model.js";
 import {
   CreateProjectInput, UpdateProjectInput,} from "./project.validation.js";
 import { aiService } from "../ai/index.js";
-import { NotFoundError } from "../lib/http-error.js";
+import { NotFoundError, ConflictError } from "../lib/http-error.js";
 import * as workspaceService from "../runtime/workspace.service.js";
 import * as runtimeManagerService from "../runtime/runtime-manager.service.js";
 import * as workspaceFileService from "../runtime/workspace-file.service.js";
+import { pipelineRunContext } from "../ai/utils/run-context.js";
 
 
 export async function createProject(
@@ -92,7 +94,7 @@ export async function deleteProject(
 
   if (project) {
     try {
-      runtimeManagerService.stopRuntime(projectId);
+      await runtimeManagerService.stopRuntime(projectId);
       
       // Fire and forget workspace deletion to unblock the API response
       workspaceService.deleteWorkspace(projectId).catch(err => {
@@ -106,16 +108,30 @@ export async function deleteProject(
   return project;
 }
 
-export async function generateProject(owner: string, projectId: string) {
-  const project = await ProjectModel.findOne({ owner, _id: projectId });
+export async function startGeneration(owner: string, projectId: string) {
+  const project = await ProjectModel.findOneAndUpdate(
+    {
+      _id: projectId,
+      owner,
+      status: { $in: ["draft", "ready", "failed"] }
+    },
+    { $set: { status: "generating", pipelineStage: "Initializing Generation..." } },
+    { returnDocument: "after" }
+  );
+
   if (!project) {
-    throw new NotFoundError("Project not found");
+    const exists = await ProjectModel.exists({ _id: projectId, owner });
+    if (!exists) {
+      throw new NotFoundError("Project not found");
+    }
+    throw new ConflictError("Project is already generating or in an active state.");
   }
+  return project;
+}
 
-  project.status = "generating";
-  await project.save();
+export async function generateProject(project: HydratedDocument<Project>) {
+  const projectId = project._id.toString();
 
-  let runtimeTime = 0;
   const startOverall = performance.now();
 
   let saveQueue = Promise.resolve<unknown>(null);
@@ -130,17 +146,29 @@ export async function generateProject(owner: string, projectId: string) {
 
   console.log("\n===================================");
   console.log("Parallel Execution Started");
-  console.log("===================================");
+  // Absolute safety timeout to prevent hanging generations
+  const abortController = new AbortController();
+  const masterDeadline = setTimeout(() => {
+    abortController.abort(new Error("Master pipeline deadline exceeded (8 minutes)"));
+  }, 8 * 60 * 1000);
 
   try {
-    const { projectPlan, architecturePlan, generatedProject, metrics } = await aiService.generate({ 
+    const { projectPlan, architecturePlan, generatedProject, metrics } = await pipelineRunContext.run(
+      {
+        blacklistedModels: new Set<string>(),
+        groqExcludedModels: new Set<string>(),
+        groqModelCooldowns: new Map<string, number>(),
+        abortSignal: abortController.signal
+      },
+      async () => {
+        return aiService.generate({ 
       prompt: project.prompt,
       projectId: projectId,
       onEvent: (event) => {
         // Fire-and-forget DB update for live status tracking
         void (async () => {
           let stage: string | null = null;
-          let timestampKey: string | null = null;
+          let timestampKey: keyof NonNullable<import("./project.model.js").Project["pipelineTimestamps"]> | null = null;
 
           switch (event.type) {
             case "planner_started":
@@ -190,12 +218,10 @@ export async function generateProject(owner: string, projectId: string) {
           console.log("\n-----------------------------------");
           console.log("Runtime Branch Started");
           console.log("-----------------------------------");
-          
-          const startRuntime = performance.now();
-          runtimeTime = performance.now() - startRuntime;
         }
       }
     });
+  });
 
     const aiTime = performance.now() - startOverall;
 
@@ -245,7 +271,7 @@ export async function generateProject(owner: string, projectId: string) {
     // Telemetry Calculations
     const aiFiles = generatedProject.files.filter(f => !f.path.includes('node_modules') && f.content && f.content.length > 0);
     const aiFileCount = aiFiles.length;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const largestFile = aiFiles.reduce((max, f) => f.content!.length > (max.content?.length || 0) ? f : max, {} as any);
     const avgFileSize = aiFiles.reduce((sum, f) => sum + f.content!.length, 0) / (aiFileCount || 1);
     const requestedFeatures = projectPlan.features.length;
@@ -269,7 +295,6 @@ export async function generateProject(owner: string, projectId: string) {
     console.log(`Architecture retries: ${typedMetrics?.architectRetries || 0}`);
     console.log("\n===================================");
     console.log(`AI Branch: ${aiTime.toFixed(0)}ms`);
-    console.log(`Runtime Prep: ${runtimeTime.toFixed(0)}ms`);
     console.log(`Synchronization & Install: ${syncTime.toFixed(0)}ms`);
     console.log(`Total Pipeline: ${totalTime.toFixed(0)}ms`);
     console.log("===================================\n");
@@ -289,6 +314,8 @@ export async function generateProject(owner: string, projectId: string) {
     }
 
     throw error;
+  } finally {
+    clearTimeout(masterDeadline);
   }
 }
 
@@ -310,7 +337,7 @@ export async function startRefinement(owner: string, projectId: string) {
   return project;
 }
 
-export async function refineProject(project: import("mongoose").HydratedDocument<import("./project.model.js").Project>, prompt: string) {
+export async function refineProject(project: HydratedDocument<Project>, prompt: string) {
   const projectId = project._id.toString();
 
   const rollbackFiles = JSON.parse(JSON.stringify(project.generatedProject?.files || []));

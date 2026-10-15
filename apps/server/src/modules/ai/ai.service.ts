@@ -67,8 +67,10 @@ export class AiService {
       }
     };
 
-    const finalState = await this.graph.execute(initialState, (event) => {
-      // 1. Log the event internally
+    let finalState: GenerationState;
+    try {
+      finalState = await this.graph.execute(initialState, (event) => {
+        // 1. Log the event internally
       if (event.type.endsWith("_started") && event.type !== "repair_started") {
         const node = event.type.split("_")[0];
         console.log(`[Pipeline] ${node.charAt(0).toUpperCase() + node.slice(1)} Started`);
@@ -84,10 +86,11 @@ export class AiService {
       if (data.onEvent) {
         data.onEvent(event);
       }
-    });
-    
-    // Stop the dev server if it was started during validation
-    devServerManager.stopServer(initialState.project.id);
+      });
+    } finally {
+      // Stop the dev server if it was started during validation
+      await devServerManager.stopServer(initialState.project.id);
+    }
 
     if (finalState.validationResult && !finalState.validationResult.passed) {
       const issues = JSON.stringify(finalState.validationResult.issues, null, 2);
@@ -122,12 +125,21 @@ GateRunner:             ${(finalState.metrics.validationMs / 1000).toFixed(1)} s
       architecturePlan: finalState.architecture, 
       generatedProject: finalState.generatedFiles,
       metrics: finalState.metrics
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
     } as unknown as { projectPlan: ProjectPlan; architecturePlan: ArchitecturePlan; generatedProject: GeneratedProject; metrics: any };
   }
 
   async refine(data: { project: import("mongoose").HydratedDocument<Project>, prompt: string, onEvent?: (event: import("./graph/types.js").GraphEvent) => void }) {
-    return this.refinementService.refine(data.project, data.prompt, data.onEvent);
+    const abortController = new AbortController();
+    const timeout = setTimeout(() => {
+      abortController.abort(new Error("Master refinement deadline exceeded (8 minutes)"));
+    }, 8 * 60 * 1000);
+
+    try {
+      return await this.refinementService.refine(data.project, data.prompt, data.onEvent, abortController.signal);
+    } finally {
+      clearTimeout(timeout);
+    }
   }
 }
 

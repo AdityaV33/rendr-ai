@@ -12,9 +12,6 @@ if (env.ENABLE_DNS_WORKAROUND) {
 
 export const connectDatabase = async (): Promise<void> => {
   try {
-    if (!env.MONGODB_URI) {
-      throw new Error('MONGODB_URI is not defined');
-    }
 
     await mongoose.connect(env.MONGODB_URI);
 

@@ -6,10 +6,12 @@ import { BadRequestError, InternalServerError } from "../lib/http-error.js";
 import {
   releasePort,
   getAvailablePort,
+  waitForPortRelease,
 } from "./port.service.js";
 import {
   startProcess,
   stopProcess,
+  forceKillProcess,
 } from "./process.service.js";
 import {
   getWorkspacePath,
@@ -187,19 +189,38 @@ export async function startPreview(
       process: child,
     };
   } catch (error) {
-    releasePort(port);
-
     if (child) {
-      stopProcess(child);
+      await stopProcess(child);
+    }
+    const isFree = await waitForPortRelease(port);
+    if (isFree) {
+      releasePort(port);
+    } else {
+      console.error(`[Preview] Error: Port ${port} remained bound after preview startup failure.`);
     }
 
     throw error;
   }
 }
 
-export function stopPreview(
+export async function stopPreview(
   preview: PreviewResult,
-): void {
-  stopProcess(preview.process);
-  releasePort(preview.port);
+): Promise<void> {
+  await stopProcess(preview.process);
+  
+  let isFree = await waitForPortRelease(preview.port);
+  
+  if (!isFree) {
+    console.warn(`[Preview] Warning: Port ${preview.port} still bound after graceful shutdown. Escalating...`);
+    await forceKillProcess(preview.process);
+    
+    // Recheck with a slightly shorter timeout
+    isFree = await waitForPortRelease(preview.port, 2000);
+  }
+
+  if (isFree) {
+    releasePort(preview.port);
+  } else {
+    console.error(`[Preview] Error: Port ${preview.port} remained bound after forceful termination of preview. Port will not be released to prevent conflicts.`);
+  }
 }

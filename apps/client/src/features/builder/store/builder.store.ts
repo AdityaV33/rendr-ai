@@ -20,6 +20,8 @@ interface BuilderStore {
 
   selectedFile: string | null;
 
+  sidebarTab: "assistant" | "preview";
+
   loading: boolean;
   startingRuntime: boolean;
   isApplying: boolean;
@@ -37,6 +39,7 @@ interface BuilderStore {
   stopRuntime: (projectId: string) => Promise<void>;
 
   selectFile: (file: string | null) => void;
+  setSidebarTab: (tab: "assistant" | "preview") => void;
 }
 
 export const useBuilderStore = create<BuilderStore>((set, get) => ({
@@ -44,6 +47,8 @@ export const useBuilderStore = create<BuilderStore>((set, get) => ({
   runtime: null,
 
   selectedFile: null,
+
+  sidebarTab: "assistant",
 
   loading: false,
   startingRuntime: false,
@@ -303,6 +308,12 @@ export const useBuilderStore = create<BuilderStore>((set, get) => ({
   selectFile: (file) => {
     set({
       selectedFile: file,
+    });
+  },
+
+  setSidebarTab: (tab) => {
+    set({
+      sidebarTab: tab,
     });
   },
 }));

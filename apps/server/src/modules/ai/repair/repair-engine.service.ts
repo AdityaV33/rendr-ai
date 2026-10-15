@@ -5,6 +5,7 @@ import { env } from "../../../config/env.js";
 import { z } from "zod";
 import type { ParsedDiagnostic, RepairContext } from "./repair.types.js";
 import { zodToGeminiSchema } from "../utils/schema.utils.js";
+import { ContractGate } from "../generator/contract.gate.js";
 
 const repairResponseSchema = z.object({
   files: z.array(z.object({
@@ -27,7 +28,7 @@ export class RepairEngineService {
     if (!state.generatedFiles || !state.architecture) return [];
 
     const files = state.generatedFiles.files;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const allContracts: Record<string, any> = {};
     
     if (state.architecture.componentContracts) {
@@ -41,11 +42,12 @@ export class RepairEngineService {
     
     // --- BOUNDED REPAIR CONTEXT BUDGET ---
     const MAX_CONTEXT_FILES = 8;
-    const contextFiles = new Set<string>();
+    const editablePaths = new Set<string>();
+    const readonlyPaths = new Set<string>();
     
     // 1. Broken files directly mentioned in diagnostics
     for (const path of affectedFilePaths) {
-      if (contextFiles.size < MAX_CONTEXT_FILES) contextFiles.add(path);
+      if (editablePaths.size < MAX_CONTEXT_FILES) editablePaths.add(path);
     }
     
     // 2. Imported dependencies & interfaces from broken files (highest priority for type mismatch repairs)
@@ -55,46 +57,59 @@ export class RepairEngineService {
       
       const importMatches = [...brokenFile.content.matchAll(/import\s+.*?\s+from\s+['"]([^'"]+)['"]/g)];
       for (const match of importMatches) {
-        if (contextFiles.size >= MAX_CONTEXT_FILES) break;
+        if (editablePaths.size + readonlyPaths.size >= MAX_CONTEXT_FILES) break;
         const importPath = match[1];
         if (importPath.startsWith('.')) {
           const importBasename = importPath.split('/').pop()!;
           const importedFile = files.find(f => f.path.includes(`/${importBasename}.`) || f.path.includes(`/${importBasename}`) || f.path === importBasename);
-          if (importedFile) contextFiles.add(importedFile.path);
+          if (importedFile && !editablePaths.has(importedFile.path)) {
+            readonlyPaths.add(importedFile.path);
+          }
         }
       }
     }
 
-    // 3. Files matching diagnostic symbols (e.g. KPICard, useNotifications)
+    // 4. Parent Importers (now context-only)
+    for (const brokenPath of affectedFilePaths) {
+      if (editablePaths.size + readonlyPaths.size >= MAX_CONTEXT_FILES) break;
+      const basename = brokenPath.split('/').pop()!.replace(/\.[^.]+$/, '');
+      for (const f of files) {
+        if (editablePaths.size + readonlyPaths.size >= MAX_CONTEXT_FILES) break;
+        if (f.content.includes(`/${basename}`) || f.content.includes(`./${basename}`)) {
+          if (!editablePaths.has(f.path)) {
+            readonlyPaths.add(f.path);
+          }
+        }
+      }
+    }
+
+    // 3. Files matching diagnostic symbols (e.g. context only)
     for (const diag of diagnostics) {
-      if (contextFiles.size >= MAX_CONTEXT_FILES) break;
+      if (editablePaths.size + readonlyPaths.size >= MAX_CONTEXT_FILES) break;
       const symbols = diag.message.match(/[A-Z][a-zA-Z0-9]+/g) || [];
       for (const sym of symbols) {
         const matchingFile = files.find(f => f.path.includes(`/${sym}.`) || f.content.includes(`interface ${sym}`) || f.content.includes(`type ${sym}`));
-        if (matchingFile) contextFiles.add(matchingFile.path);
-      }
-    }
-    
-    // 4. Parent Importers
-    for (const brokenPath of affectedFilePaths) {
-      if (contextFiles.size >= MAX_CONTEXT_FILES) break;
-      const basename = brokenPath.split('/').pop()!.replace(/\.[^.]+$/, '');
-      for (const f of files) {
-        if (contextFiles.size >= MAX_CONTEXT_FILES) break;
-        if (f.content.includes(`/${basename}`) || f.content.includes(`./${basename}`)) {
-          contextFiles.add(f.path);
+        if (matchingFile && !editablePaths.has(matchingFile.path)) {
+          readonlyPaths.add(matchingFile.path);
         }
       }
     }
 
-    const affectedFiles = files.filter(f => contextFiles.has(f.path));
+    const editableFiles = files.filter(f => editablePaths.has(f.path));
+    const contextOnlyFiles = files.filter(f => readonlyPaths.has(f.path));
+
+    console.log(`[RepairEngine] Editable targets: ${Array.from(editablePaths).join(", ") || "None"}`);
+    if (readonlyPaths.size > 0) {
+      console.log(`[RepairEngine] Context-only files: ${Array.from(readonlyPaths).join(", ")}`);
+    }
 
     // Cluster error messages
     const clusteredDiagnostics = diagnostics; // Passed directly in context
 
     const repairContext: RepairContext = {
       diagnostics: clusteredDiagnostics,
-      affectedFiles,
+      editableFiles,
+      contextOnlyFiles,
       architecture: state.architecture,
       contracts: allContracts,
       buildCommand: state.generatedFiles.commands.build,
@@ -119,6 +134,20 @@ export class RepairEngineService {
       for (const file of repairResult.files) {
         const filePath = file.path;
         const newContent = file.content;
+        
+        // ContractGate Verification
+        const violations = ContractGate.verify(
+          newContent,
+          allContracts,
+          filePath,
+          state.architecture.stack.frontendFramework,
+          true // strictExports flag for repair
+        );
+
+        if (violations.length > 0) {
+          console.error(`[RepairEngine] ContractGate rejected repair for ${filePath}:\n- ${violations.join('\n- ')}`);
+          throw new Error(`Repair for ${filePath} was rejected by Contract Gate: ${violations.join(', ')}`);
+        }
         
         const existingFileIndex = files.findIndex(f => f.path === filePath);
         if (existingFileIndex >= 0) {

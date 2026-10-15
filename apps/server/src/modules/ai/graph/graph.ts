@@ -1,6 +1,5 @@
 import type { GenerationState } from "./state.js";
 import type { GraphEvent, GraphEventType } from "./types.js";
-import { pipelineRunContext } from "../utils/run-context.js";
 
 import type { PlannerNode } from "./nodes/planner.node.js";
 import type { ArchitectNode } from "./nodes/architect.node.js";
@@ -15,40 +14,18 @@ export class GenerationGraph {
     private readonly gateRunnerNode: GateRunnerNode
   ) {}
 
-  public async execute(
-    state: GenerationState, 
-    onEvent?: (event: GraphEvent) => void
-  ): Promise<GenerationState> {
+  private async executeArchitectWithValidation(state: GenerationState, emit: (type: GraphEventType, durationMs?: number) => void): Promise<GenerationState> {
     let currentState = state;
-    const emit = (type: GraphEventType, durationMs?: number) => {
-      if (onEvent) {
-        onEvent({ type, timestamp: Date.now(), durationMs, state: currentState });
-      }
-    };
-    
-    return pipelineRunContext.run({ blacklistedModels: new Set<string>() }, async () => {
-    const startGraph = performance.now();
-    emit("graph_started");
-
-    let startNode = performance.now();
-    emit("planner_started");
-    currentState = await this.plannerNode.execute(currentState);
-    currentState.metrics.plannerMs = performance.now() - startNode;
-    emit("planner_completed", currentState.metrics.plannerMs);
-
     let architectAttempts = 0;
     while (architectAttempts < 3) {
       architectAttempts++;
       
-      startNode = performance.now();
+      const startNode = performance.now();
       emit("architect_started");
       currentState = await this.architectNode.execute(currentState);
       currentState.metrics.architectMs += (performance.now() - startNode);
       emit("architect_completed", performance.now() - startNode);
 
-      const oversized = this.generatorNode.identifyOversizedFiles(currentState.architecture!.fileStructure);
-      
-      // Calculate AI File Budget (files that don't exist in templates)
       const aiFiles = currentState.architecture!.fileStructure.filter(f => f.type === 'file' && f.purpose).length;
       const budgetExceeded = aiFiles > 10;
       
@@ -92,11 +69,8 @@ export class GenerationGraph {
         console.log(`\nReason:\n${rejectedReason}\n\nDecision:\nRejecting architecture and requesting decomposition.\n`);
       }
       
-      if ((oversized.length > 0 || budgetExceeded || hasViolation) && architectAttempts < 3) {
+      if ((budgetExceeded || hasViolation) && architectAttempts < 3) {
         let feedback = "";
-        if (oversized.length > 0) {
-          feedback += `The following files are predicted to be too large to generate in a single response (exceeding maximum token limits): ${oversized.join(", ")}. You MUST decompose them into smaller, independent components. `;
-        }
         if (budgetExceeded) {
           feedback += `You generated ${aiFiles} AI files, which exceeds the strict maximum budget of 10 files. You MUST completely defer the lowest-priority workflows to respect this limit instead of merging logic.`;
         }
@@ -106,14 +80,38 @@ export class GenerationGraph {
         
         currentState.architectFeedback = feedback;
         currentState.metrics.architectRetries++;
-        console.warn(`[Pipeline] Architect generated invalid architecture: ${oversized.length > 0 ? 'Oversized files' : ''} ${budgetExceeded ? `Budget exceeded (${aiFiles} files)` : ''} ${hasViolation ? `Complexity violation` : ''}. Retrying...`);
+        console.warn(`[Pipeline] Architect generated invalid architecture: ${budgetExceeded ? `Budget exceeded (${aiFiles} files)` : ''} ${hasViolation ? `Complexity violation` : ''}. Retrying...`);
       } else {
-        if (oversized.length > 0 || budgetExceeded || hasViolation) {
+        if (budgetExceeded || hasViolation) {
           console.error(`[Pipeline] Architect still generating invalid architecture after 3 attempts. Proceeding with caution...`);
         }
         break;
       }
     }
+    return currentState;
+  }
+
+  public async execute(
+    state: GenerationState, 
+    onEvent?: (event: GraphEvent) => void
+  ): Promise<GenerationState> {
+    let currentState = state;
+    const emit = (type: GraphEventType, durationMs?: number) => {
+      if (onEvent) {
+        onEvent({ type, timestamp: Date.now(), durationMs, state: currentState });
+      }
+    };
+    
+    const startGraph = performance.now();
+    emit("graph_started");
+
+    let startNode = performance.now();
+    emit("planner_started");
+    currentState = await this.plannerNode.execute(currentState);
+    currentState.metrics.plannerMs = performance.now() - startNode;
+    emit("planner_completed", currentState.metrics.plannerMs);
+
+    currentState = await this.executeArchitectWithValidation(currentState, emit);
 
     let generatorAttempts = 0;
     while (generatorAttempts < 2) {
@@ -125,7 +123,7 @@ export class GenerationGraph {
         currentState.metrics.generatorMs = performance.now() - startNode;
         emit("generator_completed", currentState.metrics.generatorMs);
         break;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       } catch (err: any) {
         if (err.message === "MAX_TOKENS_EXCEEDED" && generatorAttempts < 2) {
           console.warn("[Pipeline] Generator hit MAX_TOKENS_EXCEEDED. Returning to Planner to reduce scope...");
@@ -138,9 +136,7 @@ export class GenerationGraph {
           
           // Reset architect feedback and rerun architect
           currentState.architectFeedback = undefined;
-          emit("architect_started");
-          currentState = await this.architectNode.execute(currentState);
-          emit("architect_completed", performance.now() - startNode);
+          currentState = await this.executeArchitectWithValidation(currentState, emit);
           continue; // Try generator again
         } else {
           throw err;
@@ -158,6 +154,5 @@ export class GenerationGraph {
     emit("graph_completed", currentState.metrics.totalMs);
 
     return currentState;
-    });
   }
 }

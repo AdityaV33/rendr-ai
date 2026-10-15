@@ -7,7 +7,7 @@
  *
  * Uses Zod v4's native toJSONSchema() method.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 export function zodToGeminiSchema(schema: any): object {
   const jsonSchema = typeof schema.toJSONSchema === "function" 
     ? schema.toJSONSchema() 

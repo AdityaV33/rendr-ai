@@ -18,7 +18,7 @@ export interface ApplicationSummary {
   strategies: ArchitecturePlan["strategies"];
 }
 
-export type ComponentPropType = "string" | "number" | "boolean" | "() => void" | "ReactNode" | "string[]" | "number[]" | "boolean[]";
+export type ComponentPropType = string;
 
 export interface ComponentContract {
   name: string;

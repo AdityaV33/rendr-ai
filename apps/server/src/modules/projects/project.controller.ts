@@ -1,7 +1,8 @@
 import type { Request, Response } from "express";
 import path from "node:path";
+import { ZipArchive } from "archiver";
 
-import { NotFoundError, BadRequestError } from "../lib/http-error.js";
+import { NotFoundError, BadRequestError, ConflictError } from "../lib/http-error.js";
 import { toProjectResponse } from "./project.mapper.js";
 import * as projectService from "./project.service.js";
 
@@ -99,15 +100,25 @@ export async function generateProjectController(
 ) {
   const projectId = req.params.projectId as string;
 
-  // Fire and forget the background generation
-  projectService.generateProject(
-    req.user.id,
-    projectId,
-  ).catch(err => console.error(`Background generation failed for project ${projectId}`, err));
+  try {
+    const project = await projectService.startGeneration(
+      req.user.id,
+      projectId
+    );
 
-  return res.status(202).json({
-    message: "Generation started in the background",
-  });
+    // Fire and forget the background generation
+    projectService.generateProject(project)
+      .catch(err => console.error(`Background generation failed for project ${projectId}`, err));
+
+    return res.status(202).json({
+      message: "Generation started in the background",
+    });
+  } catch (error) {
+    if (error instanceof NotFoundError || error instanceof BadRequestError || error instanceof ConflictError) {
+      throw error;
+    }
+    throw new BadRequestError(error instanceof Error ? error.message : "Failed to start generation");
+  }
 }
 
 export async function refineProjectController(
@@ -173,14 +184,13 @@ export async function undoProjectController(
 
   return res.status(200).json(toProjectResponse(project));
 }
-import { ZipArchive } from "archiver";
 
 export async function exportProject(req: Request, res: Response) {
   const projectId = req.params.projectId as string;
   const project = await projectService.requireProject(req.user.id, projectId);
 
-  if (project.status !== "ready" || !project.generatedProject?.files) {
-    throw new BadRequestError("Project is not ready for export.");
+  if (!project.generatedProject?.files || project.generatedProject.files.length === 0) {
+    throw new BadRequestError("Project has no files to export.");
   }
 
   const safeFilename = project.name.replace(/[^a-z0-9]/gi, "_").toLowerCase() || "project";

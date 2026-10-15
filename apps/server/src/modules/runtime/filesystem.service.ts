@@ -54,6 +54,10 @@ export async function copyDirectory(
 ): Promise<void> {
   await fs.cp(sourcePath, destinationPath, {
     recursive: true,
+    filter: (src) => {
+      const name = path.basename(src);
+      return name !== "node_modules" && name !== ".git";
+    }
   });
 }
 

@@ -15,6 +15,8 @@ export async function startRuntime(
   const projectId = req.params
     .projectId as string;
 
+  await projectService.requireProject(req.user.id, projectId);
+
   const runtime =
     await runtimeManagerService.startRuntime(
       req.user.id,
@@ -31,7 +33,9 @@ export async function stopRuntime(
   const projectId = req.params
     .projectId as string;
 
-  runtimeManagerService.stopRuntime(
+  await projectService.requireProject(req.user.id, projectId);
+
+  await runtimeManagerService.stopRuntime(
     projectId,
   );
 
@@ -47,6 +51,8 @@ export async function getWorkspaceTree(
 ) {
   const projectId = req.params
     .projectId as string;
+
+  await projectService.requireProject(req.user.id, projectId);
 
   const files =
     await workspaceFileService.getWorkspaceTree(
@@ -65,6 +71,8 @@ export async function getWorkspaceFile(
 
   const filePath = req.query
     .path as string;
+
+  await projectService.requireProject(req.user.id, projectId);
 
   const content =
     await workspaceFileService.getWorkspaceFile(
@@ -170,6 +178,8 @@ export async function getRuntimeStatus(
 ) {
   const projectId = req.params
     .projectId as string;
+
+  await projectService.requireProject(req.user.id, projectId);
 
   const runtime =
     runtimeManagerService.getRuntimeState(

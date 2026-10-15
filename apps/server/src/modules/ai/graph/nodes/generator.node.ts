@@ -27,9 +27,4 @@ export class GeneratorNode {
     };
   }
 
-  public identifyOversizedFiles(
-    _files: Array<{ path: string; purpose: string; complexity?: "low" | "medium" | "high" }>
-  ): string[] {
-    return [];
-  }
 }

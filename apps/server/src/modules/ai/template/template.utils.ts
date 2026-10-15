@@ -5,13 +5,7 @@ const frameworkMap: Record<string, SupportedFramework> = {
   'React + Vite': 'react-vite',
   'React (Vite)': 'react-vite',
   'react': 'react-vite',
-  'react-vite': 'react-vite',
-  'Vanilla JS': 'vanilla',
-  'Vanilla': 'vanilla',
-  'vanilla': 'vanilla',
-  'vanilla-js': 'vanilla',
-  'HTML/CSS/JS': 'vanilla',
-  'HTML/JS/CSS': 'vanilla'
+  'react-vite': 'react-vite'
 };
 
 export function mapToSupportedFramework(frameworkString: string): SupportedFramework {

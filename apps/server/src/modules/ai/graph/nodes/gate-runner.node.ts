@@ -9,6 +9,7 @@ import { getWorkspacePath } from "../../../runtime/workspace.service.js";
 import { writeGeneratedProject } from "../../../runtime/workspace-file.service.js";
 import { startPreviewOnly } from "../../../runtime/runtime-manager.service.js";
 import { initializeRuntime, hasRuntime } from "../../../runtime/runtime.service.js";
+import { pipelineRunContext } from "../../utils/run-context.js";
 
 export class GateRunnerNode {
   constructor(
@@ -63,7 +64,8 @@ export class GateRunnerNode {
       }
 
       const [cmd, ...args] = cmdToRun.split(" ");
-      return runProcess(cmd, args, { cwd: workspacePath });
+      const runContext = pipelineRunContext.getStore();
+      return runProcess(cmd, args, { cwd: workspacePath, signal: runContext?.abortSignal });
     };
 
     // Global Repair Budget
@@ -71,6 +73,7 @@ export class GateRunnerNode {
     const maxRepairAttempts = 3;
     let totalRepairTimeMs = 0;
     const maxRepairTimeMs = 90_000;
+    const previousDiagnosticsHashes = new Set<string>();
 
     const executeRepair = async (gate: string, errorOutput: string) => {
       if (totalRepairAttempts >= maxRepairAttempts) {
@@ -86,6 +89,16 @@ export class GateRunnerNode {
       console.log(`[GateRunner] ${gate} failed. Triggering repair attempt ${totalRepairAttempts}...`);
       
       const diagnostics = DiagnosticParser.parse(errorOutput);
+      
+      // Duplicate detection to prevent infinite repair loops on environment failures
+      const normalizedHash = JSON.stringify(
+        diagnostics.map(d => ({ file: d.file, message: d.message }))
+      );
+      if (previousDiagnosticsHashes.has(normalizedHash)) {
+        throw new Error(`Duplicate build error detected across repair attempts. Aborting to prevent infinite loop.\nError: ${errorOutput.substring(0, 200)}...`);
+      }
+      previousDiagnosticsHashes.add(normalizedHash);
+
       const fixedDeterministically = await RuleEngine.attemptDeterministicFix(diagnostics, workspacePath);
 
       if (fixedDeterministically) {
@@ -116,9 +129,9 @@ export class GateRunnerNode {
     let buildResult = await runBuild();
     while (!buildResult.success) {
       try {
-        await executeRepair("Build", buildResult.stdout + "\\n" + buildResult.stderr);
+        await executeRepair("Build", buildResult.stdout + "\n" + buildResult.stderr);
         buildResult = await runBuild();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       } catch (err: any) {
         console.error(`[GateRunner] Build gate failed: ${err.message}`);
         currentState.errors.push("Build failed: " + buildResult.stdout);
@@ -143,7 +156,7 @@ export class GateRunnerNode {
         emit("verify_started");
         console.log(`[GateRunner] Preview successfully verified at ${currentState.previewUrl}!`);
       }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     } catch (err: any) {
       // Runtime repair should only trigger if the server genuinely failed to start within the timeout
       // and we still have repair budget.
@@ -155,7 +168,7 @@ export class GateRunnerNode {
         if (retryState?.preview) {
           currentState.previewUrl = retryState.preview.url;
         }
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       } catch (retryErr: any) {
          currentState.errors.push("Preview failed to start: " + retryErr.message);
       }

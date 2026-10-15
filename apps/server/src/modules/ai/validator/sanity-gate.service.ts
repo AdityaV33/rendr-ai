@@ -59,12 +59,7 @@ export class SanityGateService {
       });
     }
 
-    const framework = state.architecture?.stack.frontendFramework;
-    let requiredRoots = ["src/App.tsx", "src/main.tsx"];
-    if (framework === "vanilla-js") {
-      requiredRoots = ["src/main.js"];
-    }
-
+    const requiredRoots = ["src/App.tsx", "src/main.tsx"];
     for (const root of requiredRoots) {
       const exists = files.some(f => normalizePath(f.path) === root);
       if (!exists) {

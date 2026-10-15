@@ -1,4 +1,4 @@
-export type SupportedFramework = 'react-vite' | 'vanilla';
+export type SupportedFramework = 'react-vite';
 export type SupportedLanguage = 'typescript' | 'javascript';
 export type PackageManager = 'pnpm' | 'npm' | 'yarn' | 'bun';
 

@@ -8,10 +8,11 @@ interface BuilderSidebarProps {
 }
 
 const BuilderSidebar = ({ onGenerate }: BuilderSidebarProps) => {
-  const [activeTab, setActiveTab] = useState<"assistant" | "preview">("assistant");
   const [hasOpenedPreview, setHasOpenedPreview] = useState(false);
   
   const currentProject = useBuilderStore((state) => state.currentProject);
+  const activeTab = useBuilderStore((state) => state.sidebarTab);
+  const setActiveTab = useBuilderStore((state) => state.setSidebarTab);
   const isApplying = useBuilderStore((state) => state.isApplying);
   const isUndoing = useBuilderStore((state) => state.isUndoing);
   const isActiveRefinement = Boolean(

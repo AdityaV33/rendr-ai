@@ -53,22 +53,34 @@ export class GeminiService {
    * Generates unstructured text based on a given prompt.
    * Includes retry and timeout mechanisms.
    */
-  async generateText(prompt: string, systemInstruction?: string, config?: { timeoutMs?: number; taskName?: string }): Promise<string> {
+  async generateText(prompt: string, systemInstruction?: string, config?: { timeoutMs?: number; taskName?: string; abortSignal?: AbortSignal }): Promise<string> {
     const timeoutMs = config?.timeoutMs || this.defaultRequestTimeoutMs;
     const taskName = config?.taskName || "Text Generation";
     
     return this.executeWithScheduler(async (activeModel) => {
-      const response = await this.withTimeout(
-        this.client.models.generateContent({
-          model: activeModel,
-          contents: prompt,
-          config: {
-            ...this.generationConfig,
-            systemInstruction,
-          },
-        }),
-        timeoutMs
-      );
+      const runContext = pipelineRunContext.getStore();
+      const signals: AbortSignal[] = [AbortSignal.timeout(timeoutMs)];
+      if (config?.abortSignal) {
+        signals.push(config.abortSignal);
+      }
+      if (runContext?.abortSignal) {
+        signals.push(runContext.abortSignal);
+      }
+      const combinedSignal = AbortSignal.any(signals);
+
+      if (combinedSignal.aborted) {
+         throw combinedSignal.reason || new Error("AbortError");
+      }
+
+      const response = await this.client.models.generateContent({
+        model: activeModel,
+        contents: prompt,
+        config: {
+          ...this.generationConfig,
+          systemInstruction,
+          abortSignal: combinedSignal
+        },
+      });
 
       this.totalApiCalls++;
       if (response.usageMetadata) {
@@ -95,26 +107,38 @@ export class GeminiService {
     prompt: string,
     responseSchema: object,
     systemInstruction?: string,
-    config?: { temperature?: number; timeoutMs?: number; taskName?: string },
+    config?: { temperature?: number; timeoutMs?: number; taskName?: string; abortSignal?: AbortSignal },
   ): Promise<T> {
     const timeoutMs = config?.timeoutMs || this.defaultRequestTimeoutMs;
     const taskName = config?.taskName || "Structured Generation";
     
     return this.executeWithScheduler(async (activeModel) => {
-      const response = await this.withTimeout(
-        this.client.models.generateContent({
-          model: activeModel,
-          contents: prompt,
-          config: {
-            ...this.generationConfig,
-            temperature: config?.temperature,
-            systemInstruction,
-            responseMimeType: "application/json",
-            responseSchema,
-          },
-        }),
-        timeoutMs
-      );
+      const runContext = pipelineRunContext.getStore();
+      const signals: AbortSignal[] = [AbortSignal.timeout(timeoutMs)];
+      if (config?.abortSignal) {
+        signals.push(config.abortSignal);
+      }
+      if (runContext?.abortSignal) {
+        signals.push(runContext.abortSignal);
+      }
+      const combinedSignal = AbortSignal.any(signals);
+
+      if (combinedSignal.aborted) {
+         throw combinedSignal.reason || new Error("AbortError");
+      }
+
+      const response = await this.client.models.generateContent({
+        model: activeModel,
+        contents: prompt,
+        config: {
+          ...this.generationConfig,
+          temperature: config?.temperature,
+          systemInstruction,
+          responseMimeType: "application/json",
+          responseSchema,
+          abortSignal: combinedSignal
+        },
+      });
 
       this.totalApiCalls++;
       if (response.usageMetadata) {
@@ -182,24 +206,7 @@ export class GeminiService {
     throw new InternalServerError("An error occurred while communicating with the AI service.");
   }
 
-  /**
-   * Enforces a maximum execution time for the provided promise.
-   */
-  private async withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
-    let timeoutId: NodeJS.Timeout;
 
-    const timeoutPromise = new Promise<T>((_, reject) => {
-      timeoutId = setTimeout(() => {
-        reject(new Error("Request timed out"));
-      }, timeoutMs);
-    });
-
-    try {
-      return await Promise.race([promise, timeoutPromise]);
-    } finally {
-      clearTimeout(timeoutId!);
-    }
-  }
 
   /**
    * Executes a given async function using the ModelSchedulerService.
@@ -232,10 +239,21 @@ export class GeminiService {
         
         return result;
       } catch (error: unknown) {
+        console.error("Gemini API Error:", error);
         const duration = performance.now() - startTime;
         this.scheduler.reportFailure(activeModel, error, acquireDuration);
 
-        const isTimeout = error instanceof Error && error.message === "Request timed out";
+        const runContext = pipelineRunContext.getStore();
+        const isMasterAborted = runContext?.abortSignal?.aborted === true;
+        
+        // If it's the master abort, we should instantly reject the whole pipeline.
+        if (isMasterAborted) {
+           throw error; 
+        }
+
+        const isTimeout = error instanceof Error && (error.name === "TimeoutError" || error.message.includes("timed out") || error.message.includes("deadline"));
+        const isAbort = error instanceof Error && (error.name === "AbortError" || error.message.toLowerCase().includes("abort"));
+        
         const errObj = error as Record<string, unknown>;
         const status = typeof errObj?.status === "number" ? errObj.status : undefined;
         const code = typeof errObj?.code === "string" ? errObj.code : undefined;
@@ -246,20 +264,14 @@ export class GeminiService {
         const isServerFailure = status !== undefined && status >= 500 && status < 600;
         const isNetworkFailure = code === "ECONNRESET" || code === "ETIMEDOUT" || name === "FetchError";
 
-        const isTransient = isTimeout || isRateLimit || isServerFailure || isNetworkFailure || isNotFound;
+        const isTransient = isTimeout || isAbort || isRateLimit || isServerFailure || isNetworkFailure || isNotFound;
         
         let resultReason = "Error";
-        if (isTimeout) resultReason = `Timeout (${(duration/1000).toFixed(1)}s)`;
-        else if (isRateLimit) {
-          resultReason = `429 Rate Limit (${(duration/1000).toFixed(1)}s)`;
-          const context = pipelineRunContext.getStore();
-          if (context && !context.blacklistedModels.has(activeModel)) {
-            context.blacklistedModels.add(activeModel);
-            console.warn(`[Scheduler] Blacklisting ${activeModel} for current pipeline run (429 Rate Limit)`);
-          }
-        }
+        if (isTimeout || isAbort) resultReason = `Timeout/Abort (${(duration/1000).toFixed(1)}s)`;
+        else if (isRateLimit) resultReason = `429 Rate Limit (${(duration/1000).toFixed(1)}s)`;
         else if (isServerFailure) resultReason = `${status} Server Error (${(duration/1000).toFixed(1)}s)`;
         else if (isNetworkFailure) resultReason = `Network Error (${(duration/1000).toFixed(1)}s)`;
+        else if (isNotFound) resultReason = `404 Not Found (${(duration/1000).toFixed(1)}s)`;
         
         attemptsLog.push(`Attempt ${attempt}\nModel: ${activeModel}\nAcquire: ${acquireDuration.toFixed(0)}ms\nGeneration: ${resultReason}`);
 
